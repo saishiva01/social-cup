@@ -1,0 +1,36 @@
+name: social-cup
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: social-cup-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: social_cup
+      POSTGRES_PASSWORD: social_cup_dev
+      POSTGRES_DB: social_cup_dev
+    ports:
+      # Host port 5433 (not 5432) — avoids colliding with a natively
+      # installed Postgres service that may already be running on the host.
+      - "5433:5432"
+    volumes:
+      - social-cup-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U social_cup -d social_cup_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Local SMTP catcher so email verification / password reset flows can be
+  # developed and tested without sending through real Amazon SES.
+  # Web UI: http://localhost:1080
+  maildev:
+    image: maildev/maildev:2.1.0
+    container_name: social-cup-maildev
+    restart: unless-stopped
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+
+volumes:
+  social-cup-postgres-data:

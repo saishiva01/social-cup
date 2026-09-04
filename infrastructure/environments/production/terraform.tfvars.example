@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars (gitignored) and fill in real values.
+# No secrets belong in this file -- credentials live in Secrets Manager,
+# populated out-of-band after `terraform apply` (see ../../README.md).
+
+aws_region      = "us-east-1"
+container_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/social-cup-api:latest"
+certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/00000000-0000-0000-0000-000000000000"
+db_name         = "social_cup"
+db_username     = "social_cup_admin"

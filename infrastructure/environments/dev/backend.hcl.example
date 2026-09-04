@@ -1,0 +1,13 @@
+# Copy to backend.hcl (gitignored) and fill in real values, then run:
+#   terraform init -backend-config=backend.hcl
+#
+# The S3 bucket and DynamoDB table below must already exist (they are not
+# managed by this Terraform config, to avoid a chicken-and-egg problem with
+# state storage) and should be created once, by hand or via a small
+# bootstrap config, before the first `terraform init` in any environment.
+
+bucket         = "social-cup-terraform-state"
+key            = "dev/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "social-cup-terraform-locks"
+encrypt        = true

@@ -1,0 +1,21 @@
+# Terraform working files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Real backend config and tfvars (contain environment-specific values /
+# account IDs). Only the .example files are committed.
+backend.hcl
+terraform.tfvars
+*.auto.tfvars
+
+# Plan output files, if ever saved locally
+*.tfplan
