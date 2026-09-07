@@ -15,11 +15,11 @@ terraform {
 # and protected from being clobbered by lifecycle.ignore_changes below.
 locals {
   secrets = {
-    stripe_secret_key    = "Stripe secret API key"
+    stripe_secret_key     = "Stripe secret API key"
     stripe_webhook_secret = "Stripe webhook signing secret"
     access_token_secret   = "JWT access token signing secret"
     refresh_token_secret  = "JWT refresh token signing secret"
-    sentry_dsn             = "Sentry DSN"
+    sentry_dsn            = "Sentry DSN"
   }
 }
 

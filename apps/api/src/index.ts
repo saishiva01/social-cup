@@ -1,3 +1,10 @@
+// Must run before any other import touches process.env — the API's own
+// tooling never auto-loads apps/api/.env the way Vite/Expo do for the other
+// apps, so without this, following the README's documented
+// `cp .env.example .env && pnpm dev` produces "Invalid environment
+// configuration" for every variable, even a correctly filled-in .env.
+import 'dotenv/config';
+
 import { createDatabase } from '@social-cup/database';
 
 import { createApp } from './app.js';

@@ -24,7 +24,12 @@ const envSchema = z.object({
   ACCESS_TOKEN_SECRET: z.string().min(32),
   REFRESH_TOKEN_SECRET: z.string().min(32),
 
-  SENTRY_DSN: z.string().url().optional(),
+  // .env.example documents SENTRY_DSN as blank locally ("optional locally;
+  // required in staging/production"), and dotenv turns `SENTRY_DSN=` into
+  // an empty string rather than an absent key — z.string().url().optional()
+  // rejects that empty string, so an empty value must be treated the same
+  // as an absent one.
+  SENTRY_DSN: z.union([z.string().url(), z.literal('').transform(() => undefined)]).optional(),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),

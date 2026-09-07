@@ -72,7 +72,7 @@ resource "aws_scheduler_schedule" "credit_reset" {
 
     ecs_parameters {
       task_definition_arn = var.jobs_task_definition_arn
-      launch_type          = "FARGATE"
+      launch_type         = "FARGATE"
 
       network_configuration {
         subnets          = var.private_subnet_ids
@@ -108,7 +108,7 @@ resource "aws_scheduler_schedule" "expired_code_cleanup" {
 
     ecs_parameters {
       task_definition_arn = var.jobs_task_definition_arn
-      launch_type          = "FARGATE"
+      launch_type         = "FARGATE"
 
       network_configuration {
         subnets          = var.private_subnet_ids

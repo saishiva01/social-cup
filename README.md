@@ -33,9 +33,7 @@ docs/            Architecture, ADRs, phases, open questions — see docs/product
 
 - Node.js 20+ (`.nvmrc` pins this)
 - pnpm 9+ (`corepack enable` will pick up the pinned version in `package.json`)
-- Docker (for local Postgres + mail catcher) — **not installed in the environment this
-  foundation was built in; local database startup has not been verified end-to-end. Install
-  Docker Desktop (or an equivalent) before running `pnpm infra:up`.**
+- Docker (for local Postgres + mail catcher) — required before running `pnpm infra:up`.
 
 ## Getting started
 

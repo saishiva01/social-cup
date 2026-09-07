@@ -60,10 +60,10 @@ module "ecs_service" {
 
   environment_variables = {
     NODE_ENV          = "production"
-    PORT               = "3000"
-    AWS_REGION         = var.aws_region
-    S3_BUCKET_NAME     = module.storage.bucket_name
-    CLOUDFRONT_DOMAIN  = module.storage.cloudfront_domain_name
+    PORT              = "3000"
+    AWS_REGION        = var.aws_region
+    S3_BUCKET_NAME    = module.storage.bucket_name
+    CLOUDFRONT_DOMAIN = module.storage.cloudfront_domain_name
   }
 
   container_secrets  = local.container_secrets
@@ -75,10 +75,10 @@ module "ecs_service" {
 module "database" {
   source = "../../modules/database"
 
-  environment                = local.environment
-  vpc_id                     = module.networking.vpc_id
-  private_subnet_ids         = module.networking.private_subnet_ids
-  allowed_security_group_id  = module.ecs_service.ecs_security_group_id
+  environment               = local.environment
+  vpc_id                    = module.networking.vpc_id
+  private_subnet_ids        = module.networking.private_subnet_ids
+  allowed_security_group_id = module.ecs_service.ecs_security_group_id
 
   engine_version = "16"
   instance_class = "db.t4g.medium"
@@ -103,5 +103,5 @@ module "scheduler" {
   jobs_task_definition_arn = module.ecs_service.jobs_task_definition_arn
   container_name           = module.ecs_service.jobs_container_name
   execution_role_arn       = module.ecs_service.execution_role_arn
-  task_role_arn             = module.ecs_service.task_role_arn
+  task_role_arn            = module.ecs_service.task_role_arn
 }

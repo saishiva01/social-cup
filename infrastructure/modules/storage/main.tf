@@ -69,10 +69,10 @@ resource "aws_cloudfront_distribution" "images" {
 
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods          = ["GET", "HEAD"]
-    target_origin_id        = "s3-images"
-    viewer_protocol_policy  = "redirect-to-https"
-    compress                = true
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-images"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
 
     forwarded_values {
       query_string = false

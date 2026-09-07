@@ -1,3 +1,7 @@
+// Must run before createDatabase() reads process.env below — nothing else
+// in this CLI entrypoint loads packages/database/.env automatically.
+import 'dotenv/config';
+
 import { fileURLToPath } from 'node:url';
 
 import { migrate } from 'drizzle-orm/postgres-js/migrator';

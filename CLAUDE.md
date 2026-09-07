@@ -210,7 +210,10 @@ Stripe-Checkout-web fallback for membership signup is conditional — see
    updates `infrastructure/README.md`/`docs/architecture/infrastructure.md`; a resolved open
    question gets removed (or marked resolved with the answer) from
    `docs/decisions/open-questions.md`, not left stale.
-6. **This foundation was built without a local `terraform` binary, and without Docker installed**
-   in that session's environment — `infrastructure/` has never been `terraform plan`'d against
-   real AWS credentials, and local Postgres/`docker compose` startup has never been verified
-   end-to-end. Don't assume either has been validated; verify before relying on them.
+6. **Verified so far, not yet verified.** `docker compose up` (Postgres + MailDev), the API
+   connecting to that real Postgres instance, and `pnpm db:generate`/`db:migrate` against it have
+   all been run end-to-end successfully. `terraform fmt -check` and `terraform validate` pass for
+   all three environments. `terraform plan`/`apply` have **not** been run against real AWS — that
+   needs a real S3 backend bucket/DynamoDB table (see `infrastructure/README.md`) and real AWS
+   credentials, neither of which has existed in any session so far. Don't assume a `plan` or
+   `apply` will succeed without first provisioning the backend and supplying credentials.

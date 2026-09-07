@@ -1,3 +1,7 @@
+// Must run before process.env is read below — nothing else in this CLI
+// entrypoint loads packages/database/.env automatically.
+import 'dotenv/config';
+
 import { defineConfig } from 'drizzle-kit';
 
 if (!process.env.DATABASE_URL) {
