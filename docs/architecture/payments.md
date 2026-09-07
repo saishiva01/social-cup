@@ -12,7 +12,9 @@ This document defines the design that integration must follow.
   Pay, card in one sheet) — not a redirect to a web browser, and not Apple's In-App Purchase
   (justified under Apple guideline 3.1.5(a) for physical goods consumed outside the app; see
   Module 7.6 and [open-questions.md #3](../decisions/open-questions.md#3-apple-in-app-purchase-rejection-fallback)
-  for the review-rejection contingency).
+  for the review-rejection contingency — resolved by
+  [ADR-0010](../adr/0010-apple-review-fallback-deferred.md): build only this Stripe PaymentSheet
+  flow in Phase 1, no proactive Apple IAP or Stripe-Checkout-web fallback).
 - Cancellation and card updates happen through a Stripe-hosted page opened from the app (Stripe
   Customer Portal), not a custom-built UI.
 - Stripe sends the receipt, renewal notice, and payment-failure email directly — Social Cup does
@@ -40,15 +42,18 @@ This matters for two reasons:
    the in-app-checkout approach (the PRD's own noted risk — see
    [open-questions.md #3](../decisions/open-questions.md#3-apple-in-app-purchase-rejection-fallback)),
    the fallback is a Stripe Checkout web page instead of the native payment sheet. Because credit
-   granting is driven by the *webhook*, not by which UI collected the payment, adding that
+   granting is driven by the _webhook_, not by which UI collected the payment, adding that
    fallback would mean adding a new checkout entry point, not rebuilding the entitlement logic.
+   Per [ADR-0010](../adr/0010-apple-review-fallback-deferred.md), that fallback is not built
+   proactively in Phase 1 — this webhook design just keeps it cheap to add later, if an actual
+   rejection ever makes it necessary.
 
 ## Express/webhook implementation constraint
 
 Stripe webhook signature verification (`stripe.webhooks.constructEvent`) requires the **raw,
 unparsed request body** — it will fail if `express.json()` has already parsed and re-serialized
 it. The webhook route must be mounted with `express.raw({ type: 'application/json' })` scoped to
-just that route, and mounted *before* the global `express.json()` middleware in `apps/api/src/app.ts`
+just that route, and mounted _before_ the global `express.json()` middleware in `apps/api/src/app.ts`
 (or on a path `express.json()` explicitly skips). This is a common integration mistake worth
 calling out before the route exists, not after debugging a signature-verification failure in
 production.

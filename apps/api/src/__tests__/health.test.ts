@@ -9,6 +9,23 @@ vi.stubEnv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173');
 vi.stubEnv('ACCESS_TOKEN_SECRET', 'a'.repeat(32));
 vi.stubEnv('REFRESH_TOKEN_SECRET', 'b'.repeat(32));
 
+/**
+ * A callable fake mimicking postgres.js's Sql tagged-template client. It
+ * must also carry .options.{parsers,serializers} — createApp builds the
+ * Drizzle handle eagerly and drizzle's postgres-js driver mutates those
+ * maps at construction time.
+ */
+function makeFakeSqlClient(
+  impl: () => Promise<unknown>,
+): Parameters<typeof createApp>[0]['client'] {
+  const client = impl as unknown as Parameters<typeof createApp>[0]['client'];
+  (client as unknown as { options: Record<string, Record<string, unknown>> }).options = {
+    parsers: {},
+    serializers: {},
+  };
+  return client;
+}
+
 describe('GET /health', () => {
   let app: Express;
 
@@ -17,7 +34,9 @@ describe('GET /health', () => {
     // A stand-in for the postgres.Sql client — /health (liveness) never
     // calls it; /health/ready is covered separately below with a
     // callable fake that mimics postgres.js's tagged-template client.
-    const fakeClient = {} as Parameters<typeof createApp>[0]['client'];
+    // `.options` is required because createApp now builds the Drizzle handle
+    // eagerly and drizzle's postgres-js driver mutates client.options.
+    const fakeClient = makeFakeSqlClient(async () => Promise.resolve([{ '?column?': 1 }]));
     app = createApp({ client: fakeClient });
   });
 
@@ -41,11 +60,9 @@ describe('GET /health/ready', () => {
   });
 
   it('returns 200 when the database responds', async () => {
-    const fakeClient = (() =>
-      Promise.resolve([{ '?column?': 1 }])) as unknown as Parameters<
-      typeof createAppFn
-    >[0]['client'];
-    const app = createAppFn({ client: fakeClient });
+    const app = createAppFn({
+      client: makeFakeSqlClient(async () => Promise.resolve([{ '?column?': 1 }])),
+    });
 
     const response = await request(app).get('/health/ready');
     expect(response.status).toBe(200);
@@ -57,10 +74,7 @@ describe('GET /health/ready', () => {
     // AggregateError whose .message is "" and whose useful detail is on
     // .code — the most common local-dev readiness failure (DB not running).
     const connectionRefused = Object.assign(new AggregateError([], ''), { code: 'ECONNREFUSED' });
-    const fakeClient = (() => Promise.reject(connectionRefused)) as unknown as Parameters<
-      typeof createAppFn
-    >[0]['client'];
-    const app = createAppFn({ client: fakeClient });
+    const app = createAppFn({ client: makeFakeSqlClient(() => Promise.reject(connectionRefused)) });
 
     const response = await request(app).get('/health/ready');
     expect(response.status).toBe(503);
@@ -75,7 +89,7 @@ describe('GET /unknown-route', () => {
 
   beforeAll(async () => {
     const { createApp } = await import('../app.js');
-    const fakeClient = {} as Parameters<typeof createApp>[0]['client'];
+    const fakeClient = makeFakeSqlClient(async () => Promise.resolve([{ '?column?': 1 }]));
     app = createApp({ client: fakeClient });
   });
 

@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 
+import { AuthProvider } from '@/contexts/auth-context';
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -15,7 +17,9 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <AuthProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </AuthProvider>
       <StatusBar style="auto" />
     </ThemeProvider>
   );

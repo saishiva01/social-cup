@@ -2,13 +2,14 @@
 
 ## Tooling
 
-| Layer | Tool | Where |
-|---|---|---|
-| Unit / component (all TS packages, api, admin, barista) | Vitest | `**/src/__tests__/**` next to the code it tests |
-| Unit / component (mobile) | Jest (`jest-expo` preset) + `@testing-library/react-native` | `apps/mobile/src/__tests__/` |
-| API integration | Vitest + Supertest, against `createApp()` directly (in-process, no network hop) | `apps/api/src/__tests__/` |
-| Web E2E (admin, barista) | Playwright | Introduced alongside the first real user flow worth testing end-to-end — not scaffolded speculatively in this foundation |
-| Mobile E2E | Deferred — see "What's explicitly deferred" below | — |
+| Layer                                                   | Tool                                                                                                                  | Where                                                                                                                    |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Unit / component (all TS packages, api, admin, barista) | Vitest                                                                                                                | `**/src/__tests__/**` next to the code it tests                                                                          |
+| Unit / component (mobile)                               | Jest (`jest-expo` preset) + `@testing-library/react-native`                                                           | `apps/mobile/src/__tests__/`                                                                                             |
+| API integration                                         | Vitest + Supertest, against `createApp()` directly (in-process, no network hop)                                       | `apps/api/src/__tests__/`                                                                                                |
+| DB-backed API integration                               | Vitest + Supertest against `createApp()` with a **real PostgreSQL** instance (`apps/api/src/__tests__/helpers/db.ts`) | `apps/api/src/__tests__/*.integration.test.ts`                                                                           |
+| Web E2E (admin, barista)                                | Playwright                                                                                                            | Introduced alongside the first real user flow worth testing end-to-end — not scaffolded speculatively in this foundation |
+| Mobile E2E                                              | Deferred — see "What's explicitly deferred" below                                                                     | —                                                                                                                        |
 
 Every app's `test` script is wired into `turbo run test`, so `pnpm test` from the repo root runs
 the full suite across every package with dependency-aware caching.
@@ -23,15 +24,27 @@ the full suite across every package with dependency-aware caching.
   is the current example: liveness returns 200, unknown routes return the standard error
   envelope with a request id. As product routes are added, each gets the same treatment —
   request in, response shape and status asserted out.
+- **`apps/api` (DB-backed)** — the auth and profile suites (`auth.integration.test.ts`,
+  `profile.integration.test.ts`) run against a real Postgres database (the local Docker
+  instance; see the root `docker-compose.yml`), because unique constraints, FK cascades,
+  atomic token consumption, and refresh-rotation behavior are the point — a mocked ORM cannot
+  prove them. They connect via `TEST_DATABASE_URL`
+  (`postgres://social_cup:social_cup_dev@localhost:5433/social_cup_test` locally — create the
+  `social_cup_test` database once), run the real Drizzle migrations in `beforeAll`, and
+  truncate between tests. **When `TEST_DATABASE_URL` is unset the suites skip** so `pnpm test`
+  still works without Docker; CI/dev should set it. Emails are captured by a recording
+  `EmailService` (see `helpers/app.ts`) — tests never send real mail. Test files run serially
+  (`apps/api/vitest.config.ts`) because the DB-backed files share one database and truncate it
+  in `beforeEach`.
 - **`apps/admin`, `apps/barista`** — component tests with Testing Library, asserting on rendered
   output/roles, not implementation details (no snapshot tests of internal component structure).
 - **`apps/mobile`** — same philosophy via `@testing-library/react-native`.
 
 ## The one non-negotiable test class: credit ledger and redemption concurrency
 
-PRD Module 10.1 requires, verbatim: *"Concurrency testing on the credit ledger, including two
-devices scanning one code at the same moment,"* and *"Expiry, replay, and retry testing across
-the full redemption flow."* This is not ordinary feature testing — it's the test suite that
+PRD Module 10.1 requires, verbatim: _"Concurrency testing on the credit ledger, including two
+devices scanning one code at the same moment,"_ and _"Expiry, replay, and retry testing across
+the full redemption flow."_ This is not ordinary feature testing — it's the test suite that
 proves the design in [docs/architecture/redemption.md](../architecture/redemption.md) actually
 holds under concurrency, not just in the single-request happy path a normal integration test
 covers.
@@ -56,7 +69,7 @@ mocked database cannot prove a transaction/locking strategy is actually race-fre
 
 "Full regression on iPhone and Android" and "cross-browser testing on the admin panel and scan
 page" are manual/device-lab UAT activities per the PRD, not something this foundation automates.
-Playwright, once introduced, covers cross-*browser* automated regression for the two web apps;
+Playwright, once introduced, covers cross-_browser_ automated regression for the two web apps;
 device-level mobile regression stays a manual UAT step per the PRD's own Module 10.2 acceptance
 criteria ("client user acceptance testing on real devices, at a real cafe counter").
 

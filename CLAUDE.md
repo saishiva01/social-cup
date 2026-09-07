@@ -25,6 +25,48 @@ reference — if the two ever disagree, the PDF wins.
   someone to actually answer it, and say so out loud in your response — don't pick a reading and
   move on quietly. Check that file at the start of work on anything it might cover.
 
+## Locked product decisions
+
+Confirmed answers to PRD ambiguities, recorded as ADRs. These are settled — do not re-litigate,
+re-ask, or build against a different reading without the user explicitly reopening them.
+
+- **Visitor/Member account states** ([ADR-0008](docs/adr/0008-visitor-member-account-states.md)):
+  subscription/payment gates **only** redemption and credits. A Visitor (registered, not
+  subscribed) has full browse/search/filter/view-cafe/view-menu/view-ratings/rate-drink/drink-diary
+  access, identical to a Member — subscribing adds redemption on top, it does not unlock any of
+  those. The Redeem action's behavior is account-state-dependent: Visitor → membership screen;
+  Member with credits → drink picker; Member with zero credits → disabled + renewal date; Member
+  with failed/inactive payment → disabled + card-update prompt. Resolves
+  [open-questions.md #1](docs/decisions/open-questions.md#1-can-a-visitor-browse-search-and-rate-without-ever-subscribing).
+  This is a **product/architecture decision only** — it does not authorize implementing
+  authentication, authorization, or any schema for it; that remains gated by the phase
+  boundaries below.
+- **Fixed credit value** ([ADR-0009](docs/adr/0009-fixed-credit-value.md)): 1 credit = exactly
+  $1 of drink value, fixed for Phase 1 — not admin-configurable, no credit-value overrides, no
+  variable denominations, no credit top-ups (credits are not purchased separately from the
+  membership). The membership provides the PRD's monthly credit allowance; redemption consumes
+  credits per the PRD's existing credit model — this decision only settles the dollar value of
+  one credit, nothing about how credits are granted or deducted. No rate-history/audit schema is
+  needed as a result (contrast the separate, already-admin-editable per-cafe payout rate, Module
+  7.5, which does require one). Resolves
+  [open-questions.md #2](docs/decisions/open-questions.md#2-is-the-1-per-credit-rate-a-fixed-platform-constant-or-an-admin-editable-setting).
+  Making this value admin-editable in a future phase would be a **new, separate** decision. This
+  is a **product/architecture decision only** — it does not authorize implementing credit logic,
+  membership logic, any API, or any schema; that remains gated by the phase boundaries below.
+- **Apple review fallback deferred** ([ADR-0010](docs/adr/0010-apple-review-fallback-deferred.md)):
+  Phase 1 implements only the PRD's specified Stripe payment architecture — Stripe subscriptions,
+  Stripe PaymentSheet (Apple Pay/Google Pay/card in one native sheet), and Stripe-hosted pages for
+  cancellation/card updates — driven by webhooks. Apple In-App Purchase/StoreKit and the PRD's own
+  noted Stripe-Checkout-web fallback are **not** built proactively as precaution against a possible
+  App Store review rejection. If Apple review actually rejects or requires changes to the in-app
+  flow, that is a **separate, new decision with its own ADR** at that time — this decision does
+  not declare Apple IAP impossible or permanently prohibited, only deferred until required.
+  Resolves
+  [open-questions.md #3](docs/decisions/open-questions.md#3-apple-in-app-purchase-rejection-fallback).
+  This is a **product/architecture decision only** — it does not authorize implementing Stripe,
+  PaymentSheet, subscriptions, or any payment schema; that remains gated by the phase boundaries
+  below.
+
 ## Architecture
 
 One backend (`apps/api`), three frontends (`apps/mobile`, `apps/admin`, `apps/barista`), all
@@ -66,8 +108,8 @@ pnpm workspaces + Turborepo + TypeScript project references — see
 
 - TypeScript everywhere, `strict: true`. No `any` without a comment explaining why it's
   unavoidable there.
-- No comments explaining *what* code does — names should do that. A comment is for a non-obvious
-  *why* (a constraint, an invariant, a workaround). This applies to code you write in this repo,
+- No comments explaining _what_ code does — names should do that. A comment is for a non-obvious
+  _why_ (a constraint, an invariant, a workaround). This applies to code you write in this repo,
   matching the style already in `apps/api/src/*`.
 - Don't add abstractions, config flags, or generalized "for later" code for requirements that
   don't exist yet. Three similar lines beat a premature shared helper. This is explicitly why
@@ -114,7 +156,7 @@ pnpm workspaces + Turborepo + TypeScript project references — see
   production. Full workflow: `packages/database/README.md`.
 - Model the credit balance as an append-only ledger, not a mutable counter column —
   [ADR-0003](docs/adr/0003-credit-ledger-append-only.md).
-- Every redemption stores the cafe's payout rate *at the moment it happened*, not a live
+- Every redemption stores the cafe's payout rate _at the moment it happened_, not a live
   reference to the cafe's current rate (PRD 7.5) — a later rate change must never alter a past
   statement.
 - A void is a new, audited reversing entry (who + reason), never a delete or silent update of the

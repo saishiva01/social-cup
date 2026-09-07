@@ -156,10 +156,13 @@ redemption log, exports statements, and records payments to cafes.
 - Account deletion available in-app (Apple requirement); deleting cancels any active
   subscription.
 
-> **PRD's own flagged ambiguity ("Need Confirmation"):** *"This document assumes that registered
+> **PRD's own flagged ambiguity ("Need Confirmation"):** _"This document assumes that registered
 > users can browse, search, and rate without subscribing, and that payment is required only in
-> order to redeem a drink. Please confirm before Module 7 is built."* This is carried into
-> [docs/decisions/open-questions.md](../decisions/open-questions.md) rather than resolved here.
+> order to redeem a drink. Please confirm before Module 7 is built."_
+>
+> **Resolved:** confirmed as assumed — see
+> [ADR-0008](../adr/0008-visitor-member-account-states.md) and
+> [open-questions.md #1](../decisions/open-questions.md#1-can-a-visitor-browse-search-and-rate-without-ever-subscribing).
 
 ### Module 3: Shop Discovery
 
@@ -252,10 +255,16 @@ This module holds the money, so its rules are stated exactly.
   currency.
   > **Fallback noted directly in the PRD:** if Apple's review team rejects in-app checkout
   > despite the above, the alternative is a Stripe Checkout page on the Social Cup website,
-  > opened from the app. *That alternative is explicitly "not included in this proposal"* — it
+  > opened from the app. _That alternative is explicitly "not included in this proposal"_ — it
   > would be a separate change request (the PRD estimates ~10–12 hours). See
   > [open-questions.md](../decisions/open-questions.md) and
   > [docs/architecture/payments.md](../architecture/payments.md).
+  >
+  > **Resolved:** Phase 1 builds only the Stripe PaymentSheet architecture described above; the
+  > Apple IAP/StoreKit path is not built, and this Stripe-Checkout-web fallback is not built
+  > proactively either — both remain deferred until an actual review rejection makes one
+  > necessary. See [ADR-0010](../adr/0010-apple-review-fallback-deferred.md) and
+  > [open-questions.md #3](../decisions/open-questions.md#3-apple-in-app-purchase-rejection-fallback).
 
 ### Module 8: Redemption and Barista Validation
 
@@ -292,6 +301,12 @@ how this maps to the eventual implementation.
   owed to cafes, total margin for the period.
 - **Settings:** the credit value in dollars (currently one credit = one dollar); plan price and
   credit allowance shown read-only (held in Stripe).
+
+  > **Resolved:** this Settings field is fixed and displayed read-only in Phase 1, not
+  > admin-editable — one credit is exactly $1 of drink value, with no overrides. See
+  > [ADR-0009](../adr/0009-fixed-credit-value.md) and
+  > [open-questions.md #2](../decisions/open-questions.md#2-is-the-1-per-credit-rate-a-fixed-platform-constant-or-an-admin-editable-setting).
+
 - **Cafe management:** add a cafe (name, address, hours, coordinates, photos, vibe tags, perk
   line); set payout rate ($/credit); toggle featured flag; edit/remove a cafe; generate the
   cafe's scan link and set/reset its PIN.

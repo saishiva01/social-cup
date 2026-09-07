@@ -1,17 +1,28 @@
 import { Router } from 'express';
 
+import type { AuthService } from '../../services/authService.js';
+import type { UserService } from '../../services/userService.js';
+import { createAuthRouter } from './auth.js';
+import { createMeRouter } from './me.js';
+
 /**
- * Versioned API root. No business routes exist yet — this file exists so
- * the versioning convention (mount every future route under /api/v1, add
- * /api/v2 alongside it rather than in place of it when a breaking change is
- * needed) is established before the first real endpoint is added.
+ * Versioned API root. Every future route mounts under /api/v1; a breaking
+ * change adds /api/v2 alongside it rather than replacing it. Routers are
+ * built from injected services so integration tests can pass fakes and
+ * real services alike (see apps/api/src/__tests__/).
  */
-// Explicit type annotation: without it, declaration emit tries to name
-// @types/express-serve-static-core by its pnpm store path (TS2742).
-const router: Router = Router();
+export function createV1Router(deps: {
+  authService: AuthService;
+  userService: UserService;
+}): Router {
+  const router: Router = Router();
 
-router.get('/', (_req, res) => {
-  res.status(200).json({ version: 'v1', status: 'ok' });
-});
+  router.get('/', (_req, res) => {
+    res.status(200).json({ version: 'v1', status: 'ok' });
+  });
 
-export default router;
+  router.use('/auth', createAuthRouter(deps.authService));
+  router.use('/me', createMeRouter(deps.userService));
+
+  return router;
+}

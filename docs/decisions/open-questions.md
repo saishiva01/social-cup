@@ -10,53 +10,71 @@ one is answered.
 
 ### 1. Can a Visitor browse, search, and rate without ever subscribing?
 
-**Status:** Explicitly flagged by the PRD itself, not by this codebase.
+**Status:** RESOLVED. Confirmed as the PRD's own assumption: **yes**. See
+[ADR-0008](../adr/0008-visitor-member-account-states.md) for the full decision.
 
-The PRD states in Module 2.5 (Account States): *"This document assumes that registered users can
+The PRD stated in Module 2.5 (Account States): _"This document assumes that registered users can
 browse, search, and rate without subscribing, and that payment is required only in order to
-redeem a drink. Please confirm before Module 7 is built."*
+redeem a drink. Please confirm before Module 7 is built."_
 
-This assumption is used consistently throughout the rest of the document (Visitor role in
-Section 2, Module 3–6 all describe Visitor access to browse/search/rate). Nothing in this
-engineering-foundation phase depends on the answer, but it must be confirmed before Module 7
-(Membership and Credits) and the auth/authorization model are implemented, since it determines
-whether "authenticated" and "entitled to redeem" are the same check or two separate ones.
+**Decision:** Subscription/payment gates redemption and credits only. A Visitor (registered, not
+subscribed) can browse, search, filter, view cafes/menus/ratings, rate drinks, and maintain a
+drink diary — identically to a Member. A Member additionally receives 30 credits per successful
+monthly payment and can redeem. Neither "authenticated" nor "entitled to redeem" collapse into a
+single check — they are two separate checks, as detailed in ADR-0008.
 
-**Owner:** Product.
+This assumption was already used consistently throughout the rest of the document (Visitor role
+in Section 2, Module 3–6 all describe Visitor access to browse/search/rate) — the confirmation
+changes nothing about those modules, it unblocks Module 7's account-state/authorization design.
+
+**Owner:** Product. **Resolved.**
 
 ### 2. Is the $1-per-credit rate a fixed platform constant or an admin-editable setting?
 
-Module 7.1 states flatly: *"One credit is worth one dollar at any partner cafe"* — read in
-context as a fixed rule. Module 9.2 (Admin Panel → Settings) lists *"The credit value in dollars,
-currently one credit equals one dollar"* as a value shown in the Settings screen, which reads as
+**Status:** RESOLVED. Confirmed **fixed** for Phase 1: 1 credit = exactly $1, not
+admin-configurable, no overrides, no variable denominations. See
+[ADR-0009](../adr/0009-fixed-credit-value.md) for the full decision.
+
+Module 7.1 states flatly: _"One credit is worth one dollar at any partner cafe"_ — read in
+context as a fixed rule. Module 9.2 (Admin Panel → Settings) lists _"The credit value in dollars,
+currently one credit equals one dollar"_ as a value shown in the Settings screen, which reads as
 admin-editable.
 
-If it's editable, every historical redemption needs its own snapshot of the credit-to-dollar rate
-at the time it happened (the same pattern the PRD already specifies for the per-cafe payout rate
-in Module 7.5), and a rate change needs an audit trail. If it's a fixed constant, none of that is
-needed and the value can live in application config instead of the database.
+**Decision:** Fixed. The Settings-screen field displays this value but does not accept edits in
+Phase 1 — no credit-value history/audit schema is needed, and the value can live in application
+config rather than the database. (The separate, already-unambiguous per-cafe _payout_ rate in
+Module 7.5 is unaffected — it remains admin-editable per cafe and is already required to be
+snapshotted per redemption.)
 
-**Owner:** Product. **Affects:** `packages/database` schema design when Module 7 is built —
-resolve before then, not after.
+**Owner:** Product. **Resolved.** **Affects:** `packages/database` schema design when Module 7 is
+built — no rate-history table needed as a result of this decision.
 
 ### 3. Apple in-app-purchase rejection fallback
 
+**Status:** RESOLVED. Confirmed: build the PRD's specified Stripe PaymentSheet architecture only;
+do **not** build an Apple IAP/StoreKit integration or the Stripe-Checkout-web fallback
+proactively in Phase 1. See [ADR-0010](../adr/0010-apple-review-fallback-deferred.md) for the
+full decision.
+
 Module 7.6 sells the membership through Stripe's in-app payment sheet (not Apple IAP), citing
 Apple guideline 3.1.5(a) (physical goods consumed outside the app). The PRD includes its own
-contingency note: *if Apple's review team rejects this despite the guideline, the fallback is a
+contingency note: _if Apple's review team rejects this despite the guideline, the fallback is a
 Stripe Checkout page on the Social Cup website, opened from the app — and that fallback is
-explicitly "not included in this proposal,"* scoped separately at ~10–12 hours.
+explicitly "not included in this proposal,"_ scoped separately at ~10–12 hours.
 
-This is a real risk, not a hypothetical: Apple review outcomes on 3.1.5(a) interpretation are not
-fully predictable in advance. This foundation does not build toward either outcome specifically,
-but see [docs/architecture/payments.md](../architecture/payments.md) for the one place a design
-choice was made with this risk in mind (keeping subscription-creation logic behind a
-Stripe-webhook-driven state machine rather than a client-confirms-and-tells-the-server flow,
-so a second checkout entry point could reuse the same backend logic if the fallback is ever
-commissioned).
+**Decision:** Phase 1 implements Stripe subscriptions, Stripe PaymentSheet, and Stripe-hosted
+pages (for cancellation/card updates) exactly as the PRD specifies. Social Cup does **not** build
+Apple IAP/StoreKit, and does **not** build the Stripe-Checkout-web fallback, as speculative
+precaution against a review rejection that hasn't happened. If Apple review actually rejects or
+requires changes to the in-app flow, that is handled as a separate, new product/architecture
+decision — with its own ADR — at that time, not pre-built now. This does not declare Apple IAP
+impossible or permanently prohibited, only deferred until actually required.
+[docs/architecture/payments.md](../architecture/payments.md)'s webhook-driven design (see
+[ADR-0005](../adr/0005-webhook-driven-payments.md)) already keeps a future fallback cheap to add
+without rebuilding entitlement logic — that architectural readiness is unaffected by this
+decision.
 
-**Owner:** Product/Business (decide whether to pre-emptively scope the fallback) and Engineering
-(re-confirm the webhook-driven design still covers it, when/if commissioned).
+**Owner:** Product/Business and Engineering. **Resolved.**
 
 ### 4. Cafe "vibe tags" — free text or a fixed taxonomy?
 
@@ -66,6 +84,26 @@ free-text, a curated fixed list, or an admin-managed open taxonomy. Doesn't bloc
 affects the cafes/drinks schema when Module 9 is built.
 
 **Owner:** Product (or Design, if Option A's design sprint produces a fixed tag set).
+
+### 4a. The Dallas neighbourhood list for profile setup
+
+PRD Module 2.2 says the home neighbourhood is chosen "from a set list of Dallas areas" and
+Module 3.3 filters by "neighbourhood", but the PRD never enumerates the list. The Phase 1
+schema therefore stores the neighbourhood as a validated free-text string
+(`users.neighborhood`), and the profile screen accepts any value — the canonical list, once
+provided, becomes a shared constant (e.g. in `packages/validation`) and a validation enum with
+no schema change needed. The list also feeds the Module 3 neighbourhood filter.
+
+**Owner:** Product (whoever knows the Dallas areas Social Cup will launch in).
+
+### 4b. Email-verification expiry
+
+PRD Module 2.2 says the password-reset link expires after one hour but states no expiry for
+the signup verification link. `docs/architecture/authentication.md` treats it as 24 hours
+unless the product specifies otherwise, and `apps/api/src/lib/tokens.ts` implements that
+constant. If the product owner wants a different window, it is a one-line change.
+
+**Owner:** Product. (Recorded for confirmation; the implementation uses 24h as documented.)
 
 ## Engineering-foundation decisions flagged for confirmation
 

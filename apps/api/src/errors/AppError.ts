@@ -43,6 +43,19 @@ export class ForbiddenError extends AppError {
   }
 }
 
+/**
+ * Login rejected because the account's email is unverified. Only reachable
+ * with a correct password, so the distinct code reveals nothing to an
+ * attacker who does not already know the credentials — and lets the client
+ * offer the resend-verification flow.
+ */
+export class EmailNotVerifiedError extends AppError {
+  constructor(message = 'Please verify your email address before signing in') {
+    super('EMAIL_NOT_VERIFIED', message, 403);
+    this.name = 'EmailNotVerifiedError';
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(message = 'Resource not found') {
     super('NOT_FOUND', message, 404);

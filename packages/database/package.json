@@ -25,14 +25,14 @@
   },
   "dependencies": {
     "@social-cup/validation": "workspace:*",
-    "drizzle-orm": "^0.33.0",
+    "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.4"
   },
   "devDependencies": {
     "@social-cup/config": "workspace:*",
     "@types/node": "^22.7.5",
     "dotenv": "^16.4.5",
-    "drizzle-kit": "^0.24.2",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9.12.0",
     "rimraf": "^6.0.1",
     "tsx": "^4.19.1",
