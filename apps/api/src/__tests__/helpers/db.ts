@@ -38,7 +38,7 @@ export async function setupTestDatabase(
 /** Wipes every table so each test starts from a clean, migrated schema. */
 export async function truncateAll(client: Sql): Promise<void> {
   await client.unsafe(
-    'TRUNCATE TABLE users, email_verification_tokens, password_reset_tokens, refresh_tokens RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE users, email_verification_tokens, password_reset_tokens, refresh_tokens, cafes, drinks, ratings, memberships, credit_ledger_entries, stripe_webhook_events, cafe_barista_credentials, barista_trusted_devices, redemption_codes, redemptions, redemption_voids, cafe_payout_payments, admin_audit_log RESTART IDENTITY CASCADE',
   );
 }
 

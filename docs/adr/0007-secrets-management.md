@@ -17,13 +17,13 @@ secrets are never committed to git and deployed environments use a secret manage
   from a committed `.env.example` that documents every required variable with a safe placeholder
   or generation instruction (e.g. "generate with `openssl rand -hex 32`") — never a real value.
 - **Staging/production:** AWS Secrets Manager. Terraform (`infrastructure/modules/secrets` and
-  the database module) creates the secret *resources* with placeholder values and
+  the database module) creates the secret _resources_ with placeholder values and
   `lifecycle { ignore_changes = [secret_string] }`, so applying Terraform again never overwrites
   a real value that was set afterward out-of-band. ECS task definitions reference secrets by ARN
   (`valueFrom`), so the container reads the real value from Secrets Manager at task start — the
   value is never baked into a Docker image, an ECS task definition's plain environment block, or
   Terraform state as a literal in a `.tf` file (it does still appear in Terraform state as the
-  *current* Secrets Manager value if state ever drifts to include it — see Consequences).
+  _current_ Secrets Manager value if state ever drifts to include it — see Consequences).
 - The database module generates the RDS master password itself (`random_password` resource) and
   writes it straight to its own Secrets Manager secret — no human ever needs to see or transcribe
   the database password.

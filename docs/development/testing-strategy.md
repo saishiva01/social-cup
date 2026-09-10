@@ -24,11 +24,21 @@ the full suite across every package with dependency-aware caching.
   is the current example: liveness returns 200, unknown routes return the standard error
   envelope with a request id. As product routes are added, each gets the same treatment —
   request in, response shape and status asserted out.
-- **`apps/api` (DB-backed)** — the auth and profile suites (`auth.integration.test.ts`,
-  `profile.integration.test.ts`) run against a real Postgres database (the local Docker
-  instance; see the root `docker-compose.yml`), because unique constraints, FK cascades,
-  atomic token consumption, and refresh-rotation behavior are the point — a mocked ORM cannot
-  prove them. They connect via `TEST_DATABASE_URL`
+- **`apps/api` (DB-backed)** — the auth, profile, entitlements, membership, redemption, and
+  barista suites (`auth.integration.test.ts`, `profile.integration.test.ts`,
+  `entitlements.integration.test.ts`, `membership.integration.test.ts`,
+  `redemptions.integration.test.ts`, `barista.integration.test.ts`) run against a real
+  Postgres database (the local Docker instance; see the root `docker-compose.yml`), because
+  unique constraints, FK cascades, atomic token consumption, refresh-rotation, webhook
+  idempotency, and redemption-code concurrency behavior are the point — a mocked ORM cannot prove
+  them.
+  `membership.integration.test.ts` never calls real Stripe: `helpers/fakeStripeService.ts` fakes
+  every network-calling Stripe SDK method but delegates signature verification to the real
+  `stripe` package's local (non-network) `webhooks.constructEvent`/`generateTestHeaderString`, so
+  the signature-verification and idempotency tests exercise real cryptographic/transactional
+  behavior, not a stub of it — including a test that forces a webhook transaction to fail
+  mid-processing and asserts an identical retry still fully succeeds (ADR-0011). They connect via
+  `TEST_DATABASE_URL`
   (`postgres://social_cup:social_cup_dev@localhost:5433/social_cup_test` locally — create the
   `social_cup_test` database once), run the real Drizzle migrations in `beforeAll`, and
   truncate between tests. **When `TEST_DATABASE_URL` is unset the suites skip** so `pnpm test`
@@ -49,21 +59,26 @@ proves the design in [docs/architecture/redemption.md](../architecture/redemptio
 holds under concurrency, not just in the single-request happy path a normal integration test
 covers.
 
-When Module 8 is built, its test suite must include, at minimum:
+**Implemented** — `apps/api/src/__tests__/barista.integration.test.ts` and
+`redemptions.integration.test.ts` cover, at minimum:
 
-1. **Concurrent-scan test:** fire N (≥ 2) simultaneous redemption requests for the same code
-   against a real Postgres instance (not a mock — the whole point is proving the database
-   transaction/locking behavior) and assert exactly one succeeds and the rest return the
-   "already used" red result.
-2. **Expiry test:** a code past its five-minute window is rejected even if it was never scanned.
+1. **Concurrent-scan test:** fires 2 simultaneous `POST /barista/redeem` requests for the same
+   code against a real Postgres instance (not a mock — the whole point is proving the database
+   transaction/locking behavior — via `Promise.all`) and asserts exactly one succeeds (200) and
+   the other returns the "already redeemed" red result (409), with exactly one negative ledger
+   entry and the balance never negative.
+2. **Expiry test:** a code past its five-minute window is rejected even though it was never
+   scanned, and deducts nothing.
 3. **Replay test:** re-submitting an already-consumed code (sequentially, not concurrently)
-   returns "already used," never a second deduction.
-4. **Wrong-cafe test:** a code generated for cafe A rejected when scanned at cafe B's scan page.
-5. **Dropped-connection test:** a request that fails mid-flight (simulated) leaves the code
-   `active` and the member's credits untouched — no partial deduction.
+   returns "already redeemed," never a second deduction.
+4. **Wrong-cafe test:** a code generated for cafe A is rejected ("not valid at this cafe") when a
+   device trusted for cafe B submits it.
+5. **Post-claim-failure test:** a scan whose atomic claim succeeds but a later check fails (e.g.
+   credits drained between code creation and scan) rolls the code back to `pending` — proving the
+   whole transaction, not just the claim, is atomic.
 
-These run against a real database (the local Docker Postgres in CI, not a mock ORM layer) — a
-mocked database cannot prove a transaction/locking strategy is actually race-free.
+These run against a real database (the local Docker Postgres, or CI once configured — not a mock
+ORM layer) — a mocked database cannot prove a transaction/locking strategy is actually race-free.
 
 ## Cross-browser / cross-device regression (PRD Module 10.1)
 

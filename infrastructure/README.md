@@ -58,7 +58,7 @@ One practical consequence: because `ecs-service` cannot depend on
 credentials secret exists before the ECS service's first task launch on a
 brand-new environment. In practice this self-heals — ECS retries failed task
 launches automatically — but on a truly first `apply` you may see the API
-service task fail once or twice before stabilizing. `ecs-service` *does*
+service task fail once or twice before stabilizing. `ecs-service` _does_
 depend on `module.secrets` (`depends_on`), so the five app secrets are not
 subject to this race, only the DB credentials secret.
 

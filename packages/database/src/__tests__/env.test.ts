@@ -18,7 +18,9 @@ describe('loadDatabaseEnv', () => {
   });
 
   it('rejects a non-postgres connection string', () => {
-    expect(() => loadDatabaseEnv({ DATABASE_URL: 'mysql://user:pass@localhost:3306/db' })).toThrow();
+    expect(() =>
+      loadDatabaseEnv({ DATABASE_URL: 'mysql://user:pass@localhost:3306/db' }),
+    ).toThrow();
   });
 
   it('rejects a missing DATABASE_URL', () => {

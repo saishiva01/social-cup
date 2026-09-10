@@ -8,6 +8,41 @@
       "when": 1788787108696,
       "tag": "0000_next_hobgoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788977721123,
+      "tag": "0001_nosy_red_ghost",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789036483848,
+      "tag": "0002_mature_kang",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789041880619,
+      "tag": "0003_outgoing_salo",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789056578388,
+      "tag": "0004_square_big_bertha",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789060783756,
+      "tag": "0005_ordinary_machine_man",
+      "breakpoints": true
     }
   ]
 }

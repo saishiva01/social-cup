@@ -13,7 +13,13 @@ import { randomUUID } from 'node:crypto';
 
 import { toPublicUser } from '../domain/publicUser.js';
 import { loadEnv } from '../env.js';
-import { EmailNotVerifiedError, UnauthorizedError, ValidationError } from '../errors/AppError.js';
+import {
+  AccountDeactivatedError,
+  EmailNotVerifiedError,
+  UnauthorizedError,
+  ValidationError,
+} from '../errors/AppError.js';
+import { isUniqueViolation } from '../lib/dbErrors.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 import {
   EMAIL_VERIFICATION_TTL_MS,
@@ -28,20 +34,15 @@ import { passwordResetEmail } from './email/templates/passwordResetEmail.js';
 import { verificationEmail } from './email/templates/verificationEmail.js';
 
 /**
- * postgres.js error code for a unique-constraint violation. Registration
- * relies on it to detect a duplicate email atomically — the DB constraint is
- * the authority, not a read-then-write check that two concurrent
- * registrations could both pass.
+ * Builds an email link from trusted server config (APP_WEB_URL) — never from
+ * user input — so a link in an email can never be redirected to an
+ * attacker-controlled host. The token is placed via URLSearchParams, not
+ * string concatenation, so it's always correctly encoded.
  */
-const UNIQUE_VIOLATION = '23505';
-
-function isUniqueViolation(err: unknown): boolean {
-  if (typeof err !== 'object' || err === null) return false;
-  // Drizzle wraps the underlying PostgresError in a DrizzleQueryError — the
-  // Postgres code is on .cause, not on the outer error.
-  const code =
-    (err as { code?: string }).code ?? (err as { cause?: { code?: string } }).cause?.code;
-  return code === UNIQUE_VIOLATION;
+function buildWebUrl(baseUrl: string, path: string, token: string): string {
+  const url = new URL(path, baseUrl);
+  url.searchParams.set('token', token);
+  return url.toString();
 }
 
 export interface AuthService {
@@ -95,12 +96,12 @@ export function createAuthService(deps: { db: DB; emailService: EmailService }):
       tokenHash: hashToken(rawToken),
       expiresAt: new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS),
     });
-    const { EMAIL_VERIFICATION_URL_PREFIX } = loadEnv();
+    const { APP_WEB_URL } = loadEnv();
     await emailService.send(
       verificationEmail({
         to: user.email,
         displayName: user.displayName,
-        verifyUrl: `${EMAIL_VERIFICATION_URL_PREFIX}${rawToken}`,
+        verifyUrl: buildWebUrl(APP_WEB_URL, '/verify-email', rawToken),
       }),
     );
   }
@@ -223,6 +224,13 @@ export function createAuthService(deps: { db: DB; emailService: EmailService }):
         throw new EmailNotVerifiedError();
       }
 
+      // Checked after credentials (never before) — a wrong password on a
+      // deactivated account still gets the generic invalid-credentials
+      // response, never a signal that the account exists but is deactivated.
+      if (user.deactivatedAt !== null) {
+        throw new AccountDeactivatedError();
+      }
+
       const tokens = await issueTokens(user.id, user.email);
       return { tokens, user: toPublicUser(user) };
     },
@@ -331,12 +339,12 @@ export function createAuthService(deps: { db: DB; emailService: EmailService }):
         expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
       });
 
-      const { PASSWORD_RESET_URL_PREFIX } = loadEnv();
+      const { APP_WEB_URL } = loadEnv();
       await emailService.send(
         passwordResetEmail({
           to: account.email,
           displayName: account.displayName,
-          resetUrl: `${PASSWORD_RESET_URL_PREFIX}${rawToken}`,
+          resetUrl: buildWebUrl(APP_WEB_URL, '/reset-password', rawToken),
         }),
       );
     },

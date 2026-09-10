@@ -79,18 +79,42 @@ singletons.
 ## Email verification and password reset
 
 Both use single-use, expiring tokens delivered as links via the `EmailService` abstraction
-(`apps/api/src/services/email/`) — a route never touches the provider. The link prefixes come
-from `EMAIL_VERIFICATION_URL_PREFIX` and `PASSWORD_RESET_URL_PREFIX` env vars: production uses
-the `socialcup://` deep-link scheme; local Expo Go development overrides them with
-`exp://<host>:8081/--/...` links. Verification is treated as 24h per this document's earlier
-note (the PRD states no fixed expiry); password reset is 1 hour per PRD Module 2.2.
+(`apps/api/src/services/email/`) — a route never touches the provider. The link is a real HTTPS
+URL built from the `APP_WEB_URL` env var (a trusted server config value, never user input) plus
+`/verify-email` or `/reset-password` and a `token` query parameter — e.g.
+`https://socialcup.app/verify-email?token=...`. `APP_WEB_URL` points at `apps/web`, the small
+public web app that hosts those two routes (see `apps/web/README.md`); locally it defaults to
+`apps/web`'s dev server (`http://localhost:5175`). Verification is treated as 24h per this
+document's earlier note (the PRD states no fixed expiry); password reset is 1 hour per PRD
+Module 2.2.
 
-The SMTP transport is one for every environment: MailDev locally (no auth, port 1025) and
-Amazon SES's SMTP interface in staging/production — no AWS SDK dependency, no provider code in
-routes. Sending is fire-and-forget inside the service: a transient SMTP failure is logged, never
-allowed to fail the request that already completed its account-affecting write. Email content
-carries only the action link — no tokens beyond it, no account secrets, no logging of links or
-tokens.
+**Why a web link and not a mobile deep link (`socialcup://...`) directly:** Gmail/Outlook/Apple
+Mail cannot open a custom URL scheme from a desktop client, and a real user's phone cannot
+resolve an Expo Go dev-only `exp://<lan-ip>:8081/--/...` link — so a plain HTTPS page is the only
+link shape that reliably opens from every mail client on every device. `apps/mobile`'s
+`verify-email.tsx`/`reset-password.tsx` screens still exist and still work for local Expo Go
+deep-link testing; they're just no longer what the emailed link points at. HTTPS deep linking
+into the mobile app itself (Android App Links / iOS Universal Links) is prepared for but not
+wired up yet — see "Mobile deep linking" in `apps/web/README.md` for exactly what's missing and
+why (it needs a real deployed domain, which doesn't exist in this repository's environment).
+
+Email sending goes through one of two `EmailService` implementations, selected by the
+`EMAIL_PROVIDER` env var — no provider-specific code in routes or `authService.ts`:
+
+- `maildev` (default, local development) — SMTP via `SmtpEmailService`, targeting the local
+  MailDev catcher (`docker-compose.yml`, no auth, port 1025, web UI at `:1080`). Nothing is ever
+  really delivered.
+- `resend` (staging/production) — `ResendEmailService`, Resend's HTTP API. Requires
+  `RESEND_API_KEY` and a sending domain in `EMAIL_FROM` that's been verified in the Resend
+  dashboard (see `apps/web/README.md`). `apps/api/src/env.ts` refuses to start with
+  `NODE_ENV=production` unless `EMAIL_PROVIDER=resend` — production can never silently fall back
+  to MailDev.
+
+Sending is fire-and-forget inside the service either way: a transient delivery failure is
+logged, never allowed to fail the request that already completed its account-affecting write.
+Email content carries only the action link — no tokens beyond it, no account secrets, no logging
+of links, tokens, or the Resend API key. Amazon SES is deliberately not used — Resend was chosen
+instead so transactional email needs no AWS infrastructure of its own.
 
 ## Email normalization
 
@@ -128,7 +152,11 @@ boundary; every state-gated action is re-checked server-side.
 
 Barista access is a separate model entirely — a per-cafe PIN establishes device trust, not a
 user login (see [docs/architecture/redemption.md](redemption.md)). It does not use the
-access/refresh token scheme above.
+access/refresh token scheme above. **Implemented (Phase 5):** this is also where the
+httpOnly-cookie storage design noted above for a future web auth surface was actually first put to
+use — `apps/api/src/lib/baristaCookie.ts` sets an httpOnly, `Secure` (outside local dev),
+`SameSite=Strict` cookie scoped to `/api/v1/barista`, holding an opaque token hashed the same way
+as a refresh token, never the PIN itself and never in `localStorage`.
 
 ## What's explicitly deferred
 

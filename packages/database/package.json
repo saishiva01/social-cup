@@ -20,16 +20,19 @@
     "clean": "rimraf dist .turbo *.tsbuildinfo",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",
+    "db:seed": "tsx src/seed.ts",
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@social-cup/validation": "workspace:*",
+    "bcrypt": "^6.0.0",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.4"
   },
   "devDependencies": {
     "@social-cup/config": "workspace:*",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.7.5",
     "dotenv": "^16.4.5",
     "drizzle-kit": "^0.31.10",

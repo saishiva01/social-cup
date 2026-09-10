@@ -24,6 +24,7 @@ jest.mock('@/contexts/auth-context', () => ({
 
 jest.mock('expo-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
+  useRouter: () => ({ push: jest.fn(), back: jest.fn(), canGoBack: () => false }),
 }));
 
 describe('LoginScreen', () => {
@@ -77,8 +78,8 @@ describe('LoginScreen', () => {
 
   it('renders Google and Apple as disabled placeholders that cannot authenticate', () => {
     render(<LoginScreen />);
-    const google = screen.getByText('Continue with Google');
-    const apple = screen.getByText('Continue with Apple');
+    const google = screen.getByText('Sign in with Google');
+    const apple = screen.getByText('Sign in with Apple');
     expect(google).toBeTruthy();
     expect(apple).toBeTruthy();
 

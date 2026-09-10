@@ -13,7 +13,7 @@ export function passwordResetEmail(params: {
     html: `
       <p>Hi ${displayName},</p>
       <p>We received a request to reset your Social Cup password.</p>
-      <p><a href="${resetUrl}">Choose a new password</a></p>
+      <p><a href="${resetUrl}">Reset my password</a></p>
       <p>This link expires in 1 hour. If you didn't request this, you can ignore this email — your password won't change.</p>
     `.trim(),
   };

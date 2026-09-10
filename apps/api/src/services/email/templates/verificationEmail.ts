@@ -8,7 +8,7 @@ export function verificationEmail(params: {
   const { to, displayName, verifyUrl } = params;
   return {
     to,
-    subject: 'Verify your email for Social Cup',
+    subject: 'Verify your Social Cup email',
     text: `Hi ${displayName},\n\nConfirm your email address to finish setting up your Social Cup account:\n${verifyUrl}\n\nThis link expires in 24 hours. If you didn't create a Social Cup account, you can ignore this email.`,
     html: `
       <p>Hi ${displayName},</p>

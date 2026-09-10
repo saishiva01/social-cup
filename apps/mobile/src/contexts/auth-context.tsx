@@ -1,4 +1,19 @@
-import type { PublicUser, RegisterResult, UpdateProfileInput } from '@social-cup/types';
+import type {
+  BillingPortalResult,
+  CafeDetail,
+  CafeListItem,
+  CreateRedemptionResult,
+  DiaryEntry,
+  MembershipStatusResult,
+  PaginatedResult,
+  PublicUser,
+  Rating,
+  RedemptionStatusResult,
+  RegisterResult,
+  SignatureDrinkListItem,
+  StartSubscriptionResult,
+  UpdateProfileInput,
+} from '@social-cup/types';
 import {
   createContext,
   useCallback,
@@ -39,6 +54,30 @@ export interface AuthContextValue {
   updateProfile: (fields: UpdateProfileInput) => Promise<void>;
   /** Rotates the refresh token (single-flighted); used by the API client on 401. */
   refreshSession: () => Promise<void>;
+  /** Cafe discovery (PRD Module 3/4) — Visitor-accessible, no membership check. */
+  getCafes: (params: {
+    search?: string;
+    neighborhood?: string;
+    lat?: number;
+    lng?: number;
+    page?: number;
+    pageSize?: number;
+  }) => Promise<PaginatedResult<CafeListItem>>;
+  getFeaturedCafes: (params: { lat?: number; lng?: number }) => Promise<CafeListItem[]>;
+  getSignatureDrinks: () => Promise<SignatureDrinkListItem[]>;
+  getNeighborhoods: () => Promise<string[]>;
+  getCafeDetail: (id: string) => Promise<CafeDetail>;
+  /** Drink ratings and diary (PRD Module 5) — Visitor-accessible, no membership check. */
+  getMyRating: (drinkId: string) => Promise<Rating | null>;
+  rateDrink: (drinkId: string, input: { stars: number; note: string | null }) => Promise<Rating>;
+  getDiary: (params: { page?: number; pageSize?: number }) => Promise<PaginatedResult<DiaryEntry>>;
+  /** Membership and credits (PRD Module 7) — server-authoritative; see ADR-0005/0008/0009/0010. */
+  getMembership: () => Promise<MembershipStatusResult>;
+  subscribeMembership: () => Promise<StartSubscriptionResult>;
+  createBillingPortalSession: () => Promise<BillingPortalResult>;
+  /** Redemption (PRD Module 8) — Member-only; the server re-checks every time, this is UX only. */
+  createRedemption: (cafeId: string, drinkId: string) => Promise<CreateRedemptionResult>;
+  getRedemptionStatus: (redemptionId: string) => Promise<RedemptionStatusResult>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -77,7 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // The ApiClient needs refreshSession; refreshSession needs the client — a
-  // ref breaks the cycle.
+  // ref breaks the cycle. Built in an effect (not useMemo) so the ref is
+  // never read while constructing a render-time value.
   useEffect(() => {
     apiRef.current = new ApiClient({
       getAccessToken: () => tokensRef.current.access,
@@ -156,6 +196,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(updated);
       },
       refreshSession,
+      getCafes: (params) => apiRef.current!.getCafes(params),
+      getFeaturedCafes: (params) => apiRef.current!.getFeaturedCafes(params),
+      getSignatureDrinks: () => apiRef.current!.getSignatureDrinks(),
+      getNeighborhoods: () => apiRef.current!.getNeighborhoods(),
+      getCafeDetail: (id) => apiRef.current!.getCafeDetail(id),
+      getMyRating: (drinkId) => apiRef.current!.getMyRating(drinkId),
+      rateDrink: (drinkId, input) => apiRef.current!.rateDrink(drinkId, input),
+      getDiary: (params) => apiRef.current!.getDiary(params),
+      getMembership: () => apiRef.current!.getMembership(),
+      subscribeMembership: () => apiRef.current!.subscribeMembership(),
+      createBillingPortalSession: () => apiRef.current!.createBillingPortalSession(),
+      createRedemption: (cafeId, drinkId) => apiRef.current!.createRedemption(cafeId, drinkId),
+      getRedemptionStatus: (redemptionId) => apiRef.current!.getRedemptionStatus(redemptionId),
     }),
     [status, user, login, logout, refreshSession],
   );

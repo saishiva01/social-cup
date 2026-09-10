@@ -1,15 +1,16 @@
 import { COFFEE_PREFERENCES, type CoffeePreference } from '@social-cup/types';
-import { Link } from 'expo-router';
+import { Link, Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { FormField } from '@/components/form-field';
 import { PrimaryButton } from '@/components/primary-button';
+import { ScreenContainer } from '@/components/screen-container';
+import { StatusMessage } from '@/components/status-message';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 
 /**
  * Profile setup (PRD Module 2): display name, optional photo URL, coffee
@@ -17,7 +18,8 @@ import { useAuth } from '@/contexts/auth-context';
  * read-only here. Membership/verification state is never editable client-side.
  */
 export default function ProfileScreen() {
-  const { user, updateProfile, logout } = useAuth();
+  const { status, user, updateProfile, logout } = useAuth();
+  const router = useRouter();
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(user?.profilePhotoUrl ?? '');
   const [neighborhood, setNeighborhood] = useState(user?.neighborhood ?? '');
@@ -37,7 +39,15 @@ export default function ProfileScreen() {
     );
   }
 
+  function markDirty<T>(setter: (value: T) => void) {
+    return (value: T) => {
+      setter(value);
+      setSaved(false);
+    };
+  }
+
   async function handleSave() {
+    if (busy) return;
     setBusy(true);
     setError(null);
     setSaved(false);
@@ -56,106 +66,148 @@ export default function ProfileScreen() {
     }
   }
 
+  // Reachable only from an authenticated session; a signed-out visitor
+  // (e.g. a stale deep link, or opening this route directly) is sent to
+  // sign in instead of seeing an empty form.
+  if (status !== 'authenticated') {
+    return <Redirect href="/login" />;
+  }
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <ThemedText type="subtitle">Profile</ThemedText>
+    <ScreenContainer center={false}>
+      <ThemedText type="small">
+        <Link href="/">← Back</Link>
+      </ThemedText>
 
-          <FormField
-            label="Display name"
-            value={displayName}
-            onChangeText={(value) => {
-              setDisplayName(value);
-              setSaved(false);
-            }}
-            autoComplete="name"
-            textContentType="name"
-            testID="profile-name"
-          />
-          <FormField
-            label="Email (sign-in)"
-            value={user?.email ?? ''}
-            editable={false}
-            testID="profile-email"
-          />
-          <FormField
-            label="Profile photo URL (optional)"
-            value={profilePhotoUrl}
-            onChangeText={(value) => {
-              setProfilePhotoUrl(value);
-              setSaved(false);
-            }}
-            autoCapitalize="none"
-            keyboardType="url"
-            placeholder="https://…"
-            testID="profile-photo"
-          />
+      <ThemedText type="subtitle">Your profile</ThemedText>
 
-          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.fieldLabel}>
-            Coffee preferences
-          </ThemedText>
-          <View style={styles.chips}>
-            {COFFEE_PREFERENCES.map((preference) => {
-              const selected = coffeePreferences.includes(preference);
-              return (
-                <Pressable
-                  key={preference}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => togglePreference(preference)}
-                  style={[styles.chip, selected && styles.chipSelected]}
-                  testID={`pref-${preference}`}
-                >
-                  <ThemedText type="small">{preferenceLabel(preference)}</ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
+      <SectionHeader title="Account" />
+      <FormField label="Email" value={user?.email ?? ''} editable={false} testID="profile-email" />
+      {user && !user.emailVerified ? (
+        <StatusMessage variant="error">Your email address is not verified yet.</StatusMessage>
+      ) : null}
 
-          <FormField
-            label="Home neighbourhood"
-            value={neighborhood}
-            onChangeText={(value) => {
-              setNeighborhood(value);
-              setSaved(false);
-            }}
-            placeholder="e.g. Bishop Arts District"
-            testID="profile-neighborhood"
-          />
+      <SectionHeader title="Profile" />
+      <FormField
+        label="Display name"
+        value={displayName}
+        onChangeText={markDirty(setDisplayName)}
+        autoComplete="name"
+        textContentType="name"
+        testID="profile-name"
+      />
+      <FormField
+        label="Profile photo URL (optional)"
+        value={profilePhotoUrl}
+        onChangeText={markDirty(setProfilePhotoUrl)}
+        autoCapitalize="none"
+        keyboardType="url"
+        placeholder="https://…"
+        helperText="Paste a link to a photo — uploading one directly is coming soon."
+        testID="profile-photo"
+      />
 
-          {error ? (
-            <ThemedText type="small" style={styles.error} testID="profile-error">
-              {error}
-            </ThemedText>
-          ) : null}
-          {saved ? (
-            <ThemedText type="small" style={styles.success} testID="profile-saved">
-              Profile saved.
-            </ThemedText>
-          ) : null}
+      <SectionHeader title="Preferences" />
+      <View style={styles.field}>
+        <ThemedText type="smallBold" themeColor="textSecondary">
+          Coffee preferences
+        </ThemedText>
+        <View style={styles.chips}>
+          {COFFEE_PREFERENCES.map((preference) => (
+            <PreferenceChip
+              key={preference}
+              preference={preference}
+              selected={coffeePreferences.includes(preference)}
+              onToggle={() => togglePreference(preference)}
+            />
+          ))}
+        </View>
+      </View>
+      <FormField
+        label="Home neighbourhood"
+        value={neighborhood}
+        onChangeText={markDirty(setNeighborhood)}
+        placeholder="e.g. Bishop Arts District"
+        testID="profile-neighborhood"
+      />
 
-          <PrimaryButton
-            label="Save profile"
-            busy={busy}
-            onPress={handleSave}
-            testID="profile-save"
-          />
+      {error ? (
+        <StatusMessage variant="error" testID="profile-error">
+          {error}
+        </StatusMessage>
+      ) : null}
+      {saved ? (
+        <StatusMessage variant="success" testID="profile-saved">
+          Profile saved.
+        </StatusMessage>
+      ) : null}
 
-          <PrimaryButton
-            label="Sign out"
-            busy={false}
-            onPress={() => void logout()}
-            style={styles.logoutButton}
-            testID="profile-logout"
-          />
+      <PrimaryButton label="Save profile" busy={busy} onPress={handleSave} testID="profile-save" />
 
-          <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-            <Link href="/">Back to home</Link>
-          </ThemedText>
-        </ScrollView>
-      </SafeAreaView>
-    </ThemedView>
+      <SectionHeader title="Membership" />
+      <PrimaryButton
+        label="Manage membership"
+        variant="secondary"
+        onPress={() => router.push('/membership')}
+        testID="profile-membership"
+      />
+
+      <SectionHeader title="Activity" />
+      <PrimaryButton
+        label="My drink diary"
+        variant="secondary"
+        onPress={() => router.push('/diary')}
+        testID="profile-diary"
+      />
+
+      <SectionHeader title="Account actions" />
+      <PrimaryButton
+        label="Sign out"
+        variant="danger"
+        onPress={() => void logout()}
+        testID="profile-logout"
+      />
+    </ScreenContainer>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <ThemedText type="smallBold" themeColor="textMuted" style={styles.sectionHeader}>
+      {title.toUpperCase()}
+    </ThemedText>
+  );
+}
+
+function PreferenceChip({
+  preference,
+  selected,
+  onToggle,
+}: {
+  preference: CoffeePreference;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onToggle}
+      style={[
+        styles.chip,
+        {
+          borderColor: selected ? theme.primary : theme.border,
+          backgroundColor: selected ? theme.primary : 'transparent',
+        },
+      ]}
+      testID={`pref-${preference}`}
+    >
+      <ThemedText type="small" style={{ color: selected ? '#ffffff' : undefined }}>
+        {preferenceLabel(preference)}
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -169,50 +221,24 @@ function preferenceLabel(preference: CoffeePreference): string {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    padding: Spacing.four,
-    gap: Spacing.one,
-  },
-  fieldLabel: {
+  sectionHeader: {
     marginTop: Spacing.two,
+    letterSpacing: 0.5,
+  },
+  field: {
+    gap: Spacing.one,
   },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
-    marginVertical: Spacing.two,
   },
   chip: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 20,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-  },
-  chipSelected: {
-    backgroundColor: '#208AEF',
-    borderColor: '#208AEF',
-  },
-  error: {
-    color: '#D93025',
-    marginBottom: Spacing.two,
-  },
-  success: {
-    color: '#188038',
-    marginBottom: Spacing.two,
-  },
-  logoutButton: {
-    backgroundColor: '#D93025',
-    marginTop: Spacing.two,
-  },
-  centered: {
-    textAlign: 'center',
-    marginTop: Spacing.three,
+    minHeight: 36,
+    justifyContent: 'center',
   },
 });

@@ -12,8 +12,4 @@ export const paginationQuerySchema = z.object({
 export type PaginationQuery = z.infer<typeof paginationQuerySchema>;
 
 /** Email, normalized to lowercase for consistent storage/lookup. */
-export const emailSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .email();
+export const emailSchema = z.string().trim().toLowerCase().email();

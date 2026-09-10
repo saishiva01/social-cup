@@ -1,14 +1,14 @@
 import { Link } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRef, useState } from 'react';
+import { StyleSheet, TextInput } from 'react-native';
 
 import { FormField } from '@/components/form-field';
+import { PasswordField } from '@/components/password-field';
 import { PrimaryButton } from '@/components/primary-button';
+import { ScreenContainer } from '@/components/screen-container';
 import { SocialSignIn } from '@/components/social-sign-in';
+import { StatusMessage } from '@/components/status-message';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { ApiError } from '@/lib/api';
 
@@ -18,9 +18,14 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
   const [resendSent, setResendSent] = useState(false);
+  const passwordRef = useRef<TextInput>(null);
+
+  const showResend = error !== null && error.includes('verify your email');
 
   async function handleSubmit() {
+    if (busy) return;
     setBusy(true);
     setError(null);
     setResendSent(false);
@@ -39,118 +44,85 @@ export default function LoginScreen() {
   }
 
   async function handleResend() {
+    if (resendBusy) return;
+    setResendBusy(true);
     setResendSent(false);
     try {
       await resendVerification(email.trim());
       setResendSent(true);
     } catch {
       setError('Could not resend the verification email. Please try again.');
+    } finally {
+      setResendBusy(false);
     }
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
-        >
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <ThemedText type="subtitle">Welcome back</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-              Sign in to your Social Cup account
-            </ThemedText>
+    <ScreenContainer header center={false}>
+      <ThemedText type="subtitle">Welcome back</ThemedText>
 
-            <FormField
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              testID="login-email"
-            />
-            <FormField
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              textContentType="password"
-              testID="login-password"
-            />
+      <SocialSignIn verb="Sign in with" />
 
-            {error ? (
-              <ThemedText type="small" style={styles.error} testID="login-error">
-                {error}
-              </ThemedText>
-            ) : null}
+      <FormField
+        label="Email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+        returnKeyType="next"
+        blurOnSubmit={false}
+        onSubmitEditing={() => passwordRef.current?.focus()}
+        testID="login-email"
+      />
+      <PasswordField
+        ref={passwordRef}
+        label="Password"
+        value={password}
+        onChangeText={setPassword}
+        returnKeyType="done"
+        onSubmitEditing={handleSubmit}
+        testID="login-password"
+      />
 
-            {resendSent ? (
-              <ThemedText type="small" style={styles.success} testID="resend-confirmation">
-                Verification email sent — check your inbox.
-              </ThemedText>
-            ) : null}
+      <ThemedText type="small" style={styles.forgotLink}>
+        <Link href="/forgot-password">Forgot password?</Link>
+      </ThemedText>
 
-            <PrimaryButton
-              label="Sign in"
-              busy={busy}
-              onPress={handleSubmit}
-              testID="login-submit"
-            />
+      {error ? (
+        <StatusMessage variant="error" testID="login-error">
+          {error}
+        </StatusMessage>
+      ) : null}
+      {resendSent ? (
+        <StatusMessage variant="success" testID="resend-confirmation">
+          Verification email sent — check your inbox.
+        </StatusMessage>
+      ) : null}
+      {showResend ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          Didn&apos;t get the email?{' '}
+          <ThemedText type="linkPrimary" onPress={handleResend} suppressHighlighting>
+            {resendBusy ? 'Sending…' : 'Resend it'}
+          </ThemedText>
+        </ThemedText>
+      ) : null}
 
-            {error?.includes('verify your email') ? (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-                Didn&apos;t get the email?{' '}
-                <ThemedText type="linkPrimary" onPress={handleResend}>
-                  Resend it
-                </ThemedText>
-              </ThemedText>
-            ) : null}
+      <PrimaryButton label="Log in" busy={busy} onPress={handleSubmit} testID="login-submit" />
 
-            <SocialSignIn />
-
-            <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-              <Link href="/forgot-password">Forgot password?</Link>
-              {'  ·  '}
-              <Link href="/register">Create an account</Link>
-            </ThemedText>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ThemedView>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+        Don&apos;t have an account? <Link href="/register">Create one</Link>
+      </ThemedText>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    padding: Spacing.four,
-    gap: Spacing.one,
-    justifyContent: 'center',
-    flexGrow: 1,
-  },
-  subtitle: {
-    marginBottom: Spacing.four,
-  },
-  error: {
-    color: '#D93025',
-    marginBottom: Spacing.two,
-  },
-  success: {
-    color: '#188038',
-    marginBottom: Spacing.two,
-  },
   centered: {
     textAlign: 'center',
-    marginTop: Spacing.two,
+  },
+  forgotLink: {
+    textAlign: 'right',
   },
 });

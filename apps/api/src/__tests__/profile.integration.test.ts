@@ -18,6 +18,9 @@ vi.stubEnv('DATABASE_SSL', 'false');
 vi.stubEnv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173');
 vi.stubEnv('ACCESS_TOKEN_SECRET', 'a'.repeat(32));
 vi.stubEnv('REFRESH_TOKEN_SECRET', 'b'.repeat(32));
+vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_fake');
+vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_test_fake');
+vi.stubEnv('STRIPE_PRICE_ID', 'price_test_fake');
 
 describe.skipIf(skip)('profile and authorization (real Postgres)', () => {
   let client: Awaited<ReturnType<typeof setupTestDatabase>>['client'];
@@ -91,6 +94,7 @@ describe.skipIf(skip)('profile and authorization (real Postgres)', () => {
         coffeePreferences: [],
         neighborhood: null,
         emailVerified: true,
+        role: 'user',
       });
       const body = JSON.stringify(res.body);
       expect(body).not.toContain('passwordHash');

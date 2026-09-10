@@ -1,9 +1,20 @@
 import type {
   AuthTokens,
+  BillingPortalResult,
+  CafeDetail,
+  CafeListItem,
+  CreateRedemptionResult,
+  DiaryEntry,
   LoginResult,
+  MembershipStatusResult,
+  PaginatedResult,
   PublicUser,
+  Rating,
+  RedemptionStatusResult,
   RegisterResult,
   ResetPasswordResult,
+  SignatureDrinkListItem,
+  StartSubscriptionResult,
   UpdateProfileInput,
   VerifyEmailResult,
 } from '@social-cup/types';
@@ -39,7 +50,7 @@ export interface ApiClientDeps {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH';
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT';
   body?: unknown;
   auth?: boolean;
   retryOnUnauthorized?: boolean;
@@ -142,4 +153,84 @@ export class ApiClient {
   updateMe(fields: UpdateProfileInput): Promise<PublicUser> {
     return this.request('/api/v1/me', { method: 'PATCH', body: fields, auth: true });
   }
+
+  getCafes(params: {
+    search?: string;
+    neighborhood?: string;
+    lat?: number;
+    lng?: number;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResult<CafeListItem>> {
+    return this.request(`/api/v1/cafes${toQueryString(params)}`, { auth: true });
+  }
+
+  getFeaturedCafes(params: { lat?: number; lng?: number }): Promise<CafeListItem[]> {
+    return this.request(`/api/v1/cafes/featured${toQueryString(params)}`, { auth: true });
+  }
+
+  getSignatureDrinks(): Promise<SignatureDrinkListItem[]> {
+    return this.request('/api/v1/cafes/signature-drinks', { auth: true });
+  }
+
+  getNeighborhoods(): Promise<string[]> {
+    return this.request('/api/v1/cafes/neighborhoods', { auth: true });
+  }
+
+  getCafeDetail(id: string): Promise<CafeDetail> {
+    return this.request(`/api/v1/cafes/${id}`, { auth: true });
+  }
+
+  getMyRating(drinkId: string): Promise<Rating | null> {
+    return this.request(`/api/v1/drinks/${drinkId}/rating`, { auth: true });
+  }
+
+  rateDrink(drinkId: string, input: { stars: number; note: string | null }): Promise<Rating> {
+    return this.request(`/api/v1/drinks/${drinkId}/rating`, {
+      method: 'PUT',
+      body: input,
+      auth: true,
+    });
+  }
+
+  getDiary(params: { page?: number; pageSize?: number }): Promise<PaginatedResult<DiaryEntry>> {
+    return this.request(`/api/v1/me/ratings${toQueryString(params)}`, { auth: true });
+  }
+
+  getMembership(): Promise<MembershipStatusResult> {
+    return this.request('/api/v1/membership', { auth: true });
+  }
+
+  subscribeMembership(): Promise<StartSubscriptionResult> {
+    return this.request('/api/v1/membership/subscribe', { method: 'POST', auth: true });
+  }
+
+  createBillingPortalSession(): Promise<BillingPortalResult> {
+    return this.request('/api/v1/membership/billing-portal', { method: 'POST', auth: true });
+  }
+
+  /** PRD Module 8: creates the five-minute redemption code. Only reachable for an active Member (server-enforced, not just UI). */
+  createRedemption(cafeId: string, drinkId: string): Promise<CreateRedemptionResult> {
+    return this.request('/api/v1/redemptions', {
+      method: 'POST',
+      body: { cafeId, drinkId },
+      auth: true,
+    });
+  }
+
+  /** Polled while the member waits for the barista to scan the code — the server's status is the only source of truth. */
+  getRedemptionStatus(redemptionId: string): Promise<RedemptionStatusResult> {
+    return this.request(`/api/v1/redemptions/${redemptionId}`, { auth: true });
+  }
+}
+
+/** Builds a `?key=value&...` query string, dropping undefined/empty values. */
+function toQueryString(params: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === '') continue;
+    search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query ? `?${query}` : '';
 }

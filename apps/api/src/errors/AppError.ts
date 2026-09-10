@@ -56,6 +56,19 @@ export class EmailNotVerifiedError extends AppError {
   }
 }
 
+/**
+ * Login rejected because an admin deactivated the account (PRD Module 9:
+ * "deactivate an account when needed"). Distinct from EmailNotVerifiedError
+ * so the mobile client can show an appropriate, non-actionable message
+ * (there is no self-service reactivation flow).
+ */
+export class AccountDeactivatedError extends AppError {
+  constructor(message = 'This account has been deactivated') {
+    super('ACCOUNT_DEACTIVATED', message, 403);
+    this.name = 'AccountDeactivatedError';
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(message = 'Resource not found') {
     super('NOT_FOUND', message, 404);

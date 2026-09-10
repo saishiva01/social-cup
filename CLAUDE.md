@@ -69,10 +69,13 @@ re-ask, or build against a different reading without the user explicitly reopeni
 
 ## Architecture
 
-One backend (`apps/api`), three frontends (`apps/mobile`, `apps/admin`, `apps/barista`), all
-talking to the same versioned REST API. One database (PostgreSQL via `packages/database`),
-owned exclusively by `apps/api` — no other app or package ever opens a direct connection to it.
-Stripe owns billing; the backend reacts to webhooks, never to client-reported payment success.
+One backend (`apps/api`), four frontends (`apps/mobile`, `apps/admin`, `apps/barista`,
+`apps/web`), all talking to the same versioned REST API. One database (PostgreSQL via
+`packages/database`), owned exclusively by `apps/api` — no other app or package ever opens a
+direct connection to it. Stripe owns billing; the backend reacts to webhooks, never to
+client-reported payment success. Transactional email (verification, password reset) goes
+through Resend in staging/production and a local MailDev SMTP catcher in development — no AWS
+SES, no AWS email infrastructure.
 
 Read before touching the relevant area:
 
@@ -90,6 +93,7 @@ Read before touching the relevant area:
 apps/mobile     Expo + Expo Router + TypeScript — member app
 apps/admin      React + Vite + TypeScript + React Router + TanStack Query + Tailwind — admin panel
 apps/barista    React + Vite + TypeScript — cafe scan page
+apps/web        React + Vite + TypeScript + React Router + Tailwind — public web app (email verification, password reset)
 apps/api        Node.js + Express + TypeScript + Zod + Drizzle — the backend
 packages/database    Drizzle schema, migrations, DB client — apps/api-only at runtime
 packages/types       Shared TS types, no domain/business logic

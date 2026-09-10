@@ -2,8 +2,13 @@
 
 ## Status
 
-No Stripe integration exists yet (see [docs/development/phases.md](../development/phases.md)).
-This document defines the design that integration must follow.
+**Implemented (Phase 4).** Stripe customer/subscription creation, the native PaymentSheet flow,
+the webhook handler, the membership/credit-ledger schema, and the membership API are built — see
+`apps/api/src/services/stripe/`, `apps/api/src/services/membershipService.ts`,
+`apps/api/src/services/stripeWebhookService.ts`, `apps/api/src/routes/v1/membership.ts`,
+`apps/api/src/routes/stripeWebhook.ts`, `packages/database/src/schema/memberships.ts`, and
+`apps/mobile/src/app/membership.tsx`. The rest of this document describes both the design and,
+where noted, exactly how it was implemented.
 
 ## What the PRD specifies (Module 7)
 
@@ -25,10 +30,12 @@ This document defines the design that integration must follow.
 ## Design: webhook-driven state, not client-confirms-and-tells-the-server
 
 The backend's view of "is this person a Member, and how many credits do they have" is driven
-entirely by Stripe webhook events (`checkout.session.completed` / `invoice.paid` for renewals,
-`invoice.payment_failed`, `customer.subscription.deleted`, etc.), verified with the webhook
-signing secret — **not** by the mobile app calling an endpoint after the Stripe SDK reports
-success on-device. The client-side payment sheet confirming a charge is necessary for the
+entirely by Stripe webhook events, verified with the webhook signing secret — **not** by the
+mobile app calling an endpoint after the Stripe SDK reports success on-device. The exact events
+handled (`customer.subscription.created`/`updated`/`deleted`, `invoice.paid`,
+`invoice.payment_failed` — no `checkout.session.completed`, since Social Cup uses the
+Subscriptions API + native PaymentSheet rather than Stripe Checkout) and the transactional
+idempotency pattern are in [ADR-0011](../adr/0011-stripe-webhook-events-and-idempotency.md). The client-side payment sheet confirming a charge is necessary for the
 member's own UX (immediate feedback) but is never sufficient, on its own, to grant credits or
 flip account state; only the corresponding verified webhook does that.
 
@@ -52,11 +59,10 @@ This matters for two reasons:
 
 Stripe webhook signature verification (`stripe.webhooks.constructEvent`) requires the **raw,
 unparsed request body** — it will fail if `express.json()` has already parsed and re-serialized
-it. The webhook route must be mounted with `express.raw({ type: 'application/json' })` scoped to
-just that route, and mounted _before_ the global `express.json()` middleware in `apps/api/src/app.ts`
-(or on a path `express.json()` explicitly skips). This is a common integration mistake worth
-calling out before the route exists, not after debugging a signature-verification failure in
-production.
+it. **As implemented:** `POST /api/v1/webhooks/stripe` is registered directly on the Express `app`
+in `apps/api/src/app.ts` with `express.raw({ type: 'application/json' })` scoped to just that
+route, mounted _before_ `app.use(express.json())` — it is deliberately not nested inside
+`createV1Router`, so the ordering can't accidentally be broken by reshuffling the versioned router.
 
 ## Idempotency
 
@@ -65,7 +71,30 @@ be idempotent — e.g. record the Stripe event id and skip processing if it's al
 — so a redelivered `invoice.paid` event does not grant 30 credits twice. This is the same class
 of correctness problem as redemption double-scanning (see
 [docs/architecture/redemption.md](redemption.md)): money-moving code gets it right by construction
-(unique constraint / idempotency key), not by hoping the event only arrives once.
+(unique constraint / idempotency key), not by hoping the event only arrives once. **As
+implemented:** see [ADR-0011](../adr/0011-stripe-webhook-events-and-idempotency.md) — the
+idempotency claim and every state change the event causes happen in one database transaction, so
+a failure partway through rolls back the claim too and a retried delivery reprocesses cleanly
+rather than being silently swallowed.
+
+## Local Stripe development
+
+1. Install the [Stripe CLI](https://docs.stripe.com/stripe-cli) and run `stripe login` once.
+2. `stripe listen --forward-to localhost:3000/api/v1/webhooks/stripe` — copy the `whsec_...` value
+   it prints into `apps/api/.env`'s `STRIPE_WEBHOOK_SECRET`. Keep this running while testing
+   locally; it forwards real Stripe test-mode events to your local API.
+3. Create a test-mode product/price in the [Stripe Dashboard](https://dashboard.stripe.com/test/products)
+   ($24.99/month, recurring) and put its price id in `STRIPE_PRICE_ID`.
+4. Use Stripe's [test card numbers](https://docs.stripe.com/testing#cards) in the mobile
+   PaymentSheet (e.g. `4242 4242 4242 4242` for a guaranteed success, `4000 0000 0000 0002` for a
+   guaranteed decline) — never a real card, even in a local/dev Stripe account.
+5. `stripe trigger invoice.payment_failed` (or replay an event from the Dashboard) to test the
+   failure path without waiting for a real card decline to propagate.
+
+Automated tests never call real Stripe endpoints or the Stripe CLI — see
+`apps/api/src/__tests__/helpers/fakeStripeService.ts`, which fakes every network-calling method
+but delegates signature verification to the real `stripe` package's local (non-network)
+`webhooks.constructEvent`/`generateTestHeaderString`, so signature tests exercise real crypto.
 
 ## Cafe payout rate vs. subscription billing
 

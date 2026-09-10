@@ -5,18 +5,59 @@
 `packages/database` owns the schema and migrations for the product tables built so far.
 **Implemented (Phase 1, Module 2):** the account domain — `users` plus the three token tables
 (`email_verification_tokens`, `password_reset_tokens`, `refresh_tokens`) — see migration
-`0000_next_hobgoblin.sql` and `packages/database/src/schema/{users,authTokens}.ts`. Everything
-else (cafes, drinks, ratings, memberships, credits, redemptions, payouts) is not yet built and
-will follow the rules below when it is.
+`0000_next_hobgoblin.sql` and `packages/database/src/schema/{users,authTokens}.ts`.
+**Implemented (Phase 1, Modules 3/4/9-discovery-slice):** `cafes` and `drinks` — see migration
+`0001_nosy_red_ghost.sql` and `packages/database/src/schema/cafes.ts`. `neighborhood` (on both
+`users` and `cafes`) and `vibeTags` are free text / a `jsonb` string array rather than a fixed
+taxonomy — the PRD never enumerates a canonical Dallas-neighbourhood list or a vibe-tag
+vocabulary (see [open-questions.md #4](../decisions/open-questions.md#4-cafe-vibe-tags--free-text-or-a-fixed-taxonomy)
+and [#4a](../decisions/open-questions.md#4a-the-dallas-neighbourhood-list-for-profile-setup)) — both
+are promotable to an enum later with no schema change once product supplies the list. `cafes`
+carries no payout-rate column (Module 7/9's financial schema, gated separately — see below).
+**Implemented (Phase 1, Module 5):** `ratings` — see migration `0002_mature_kang.sql` and
+`packages/database/src/schema/ratings.ts`. A rating IS the drink diary's entry (the PRD's diary
+is "every drink a member has rated" with exactly the fields a rating already carries), so there
+is no separate `diary_entries` table. Development seed data lives in `packages/database/src/seed.ts`
+(`pnpm db:seed`), clearly marked as non-production content — it does not seed ratings, since PRD
+Module 5 content is real user activity, not fixture data.
+**Implemented (Phase 4, Module 7):** `memberships`, `credit_ledger_entries`, and
+`stripe_webhook_events` — see migration `0003_outgoing_salo.sql` and
+`packages/database/src/schema/memberships.ts`. `memberships` is one row per user, created the
+first time they start a subscription (a Visitor who never subscribes has no row); `status` is
+normalized down to `incomplete`/`active`/`past_due`/`canceled` rather than storing Stripe's raw,
+richer status enum (see [ADR-0011](../adr/0011-stripe-webhook-events-and-idempotency.md)).
+`credit_ledger_entries` is the append-only ledger ADR-0003 called for — Phase 4 only ever inserts
+`monthly_grant` rows, each carrying the granting Stripe invoice id (unique, the grant's
+idempotency key) and the billing period it belongs to, so "current balance" is derived as the sum
+of entries for the membership's current period rather than an all-time sum (no rollover, no
+separate reset entry needed — see ADR-0011). `stripe_webhook_events` (`stripeEventId` primary key)
+is the webhook idempotency claim, inserted in the same transaction as every state change the event
+causes — a failed transaction rolls back the claim too, so a retried delivery reprocesses cleanly.
+**Implemented (Phase 5, Module 8):** `redemption_codes`, `redemptions`, `cafe_barista_credentials`,
+and `barista_trusted_devices` — see migration `0004_square_big_bertha.sql` and
+`packages/database/src/schema/{redemptions,barista}.ts`. `redemption_codes` is the ephemeral
+single-use-code lifecycle (`pending` → `redeemed`, or `pending` → `canceled` when a newer code
+supersedes it); `redemptions` is the durable, audited record of a _completed_ redemption only,
+carrying the cafe's payout rate as it was at the moment of the scan (not a live join) — exactly
+the rule this document states below. `credit_ledger_entries.reason`'s check constraint was widened
+to add `'redemption'` (still `'monthly_grant'` | `'redemption'`, no schema change to the balance
+query itself — see ADR-0011). `cafe_barista_credentials` (PIN hash, `pinVersion`, payout rate) is
+deliberately a separate table from `cafes`, not columns on it, so the public cafe-discovery API
+can never leak them. Payouts (Module 9's admin payout runs) are not yet built.
 
 The account schema, one file per domain area:
 
-| Table                       | Purpose                                        | Key constraints / notes                                                                                                                                                                                                                                                                                                               |
-| --------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `users`                     | The Social Cup account (PRD Module 2)          | `email` unique (normalized lowercase — see [docs/architecture/authentication.md](authentication.md)); `password_hash` bcrypt; `display_name` not null; `coffee_preferences` jsonb of the four PRD enum values (validated by Zod, not a Postgres enum — see the file comment); `email_verified_at` nullable; timestamps with timezone. |
-| `email_verification_tokens` | Single-use verification links                  | `token_hash` unique; `used_at`/`expires_at`; FK to `users` on delete cascade.                                                                                                                                                                                                                                                         |
-| `password_reset_tokens`     | Single-use reset links (1h expiry)             | Same shape as verification tokens.                                                                                                                                                                                                                                                                                                    |
-| `refresh_tokens`            | Rotated, revocable refresh sessions (ADR-0004) | `token_hash` unique; `chain_id` groups one login's token lineage so reuse revocation can kill the whole chain; `rotated_at`/`revoked_at`; FK to `users` on delete cascade.                                                                                                                                                            |
+| Table                       | Purpose                                                                        | Key constraints / notes                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`                     | The Social Cup account (PRD Module 2)                                          | `email` unique (normalized lowercase — see [docs/architecture/authentication.md](authentication.md)); `password_hash` bcrypt; `display_name` not null; `coffee_preferences` jsonb of the four PRD enum values (validated by Zod, not a Postgres enum — see the file comment); `email_verified_at` nullable; timestamps with timezone.                                                                      |
+| `email_verification_tokens` | Single-use verification links                                                  | `token_hash` unique; `used_at`/`expires_at`; FK to `users` on delete cascade.                                                                                                                                                                                                                                                                                                                              |
+| `password_reset_tokens`     | Single-use reset links (1h expiry)                                             | Same shape as verification tokens.                                                                                                                                                                                                                                                                                                                                                                         |
+| `refresh_tokens`            | Rotated, revocable refresh sessions (ADR-0004)                                 | `token_hash` unique; `chain_id` groups one login's token lineage so reuse revocation can kill the whole chain; `rotated_at`/`revoked_at`; FK to `users` on delete cascade.                                                                                                                                                                                                                                 |
+| `ratings`                   | Drink ratings and the drink diary (PRD Module 5)                               | `(user_id, drink_id)` unique index — one rating per member per drink, consumed via an atomic `ON CONFLICT DO UPDATE` upsert; `stars` check `between 1 and 5`; `note` check `char_length <= 140`; FKs to `users` and `drinks` on delete cascade. No `cafe_id` column — reached via `drink_id -> drinks.cafe_id` to avoid duplicating data already on `drinks`.                                              |
+| `cafe_barista_credentials`  | Per-cafe barista PIN + payout rate (PRD Module 7.5, 8)                         | `cafe_id` unique (one row per cafe); `pin_hash` bcrypt (same helper as passwords); `pin_version` (bumping it invalidates every trusted device at once); `payout_rate_cents` nullable — a cafe with none set cannot have a redemption created against it. Separate table from `cafes` so the public discovery API can never `select()` a PIN hash.                                                          |
+| `barista_trusted_devices`   | A device's "stays trusted" session after a correct PIN (PRD Module 8)          | `device_token_hash` unique (SHA-256, same pattern as `refresh_tokens`); `pin_version_at_issue` compared against the cafe's current `pin_version` on every use; `expires_at`; FK to `cafes` on delete cascade. No user account — a separate auth model from `requireAuth()`.                                                                                                                                |
+| `redemption_codes`          | A member's five-minute single-use code (PRD Module 8)                          | `code_hash`/`backup_code_hash` unique (SHA-256, raw values never stored); `credit_price` snapshotted from the drink at code-creation time; `status` check `in ('pending','redeemed','canceled')` — no stored `'expired'` value, see docs/architecture/redemption.md; FKs to `users`, `cafes`, `drinks` on delete cascade.                                                                                  |
+| `redemptions`               | The durable, audited record of a _completed_ redemption (PRD Module 7.5, 8, 9) | `redemption_code_id` and `credit_ledger_entry_id` both unique (exactly one redemption per code, per ledger deduction); `payout_rate_cents` and `credit_amount` snapshotted at scan time, never a live reference; `barista_trusted_device_id` FK (audit trail for which device redeemed it); no update/delete path — a future void (Phase 6) is a new reversing ledger entry, never a mutation of this row. |
 
 Only a SHA-256 hash of any token is ever stored — the raw token exists only in the email
 link/API response for its one use. No OAuth-identity columns exist: Google/Apple sign-in are UI
@@ -50,14 +91,14 @@ One file per domain area under `packages/database/src/schema/` (e.g. `users.ts`,
 `memberships.ts`, `credits.ts`, `redemptions.ts`), re-exported from `schema/index.ts`. Expected
 domain areas, from the PRD modules:
 
-| Schema area                 | PRD module      | Notes                                                                                                                                                    |
-| --------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Users / accounts            | Module 2        | **Implemented** — see the account schema table above. Memberships and OAuth identities are separate, not-yet-built schema areas, not columns on `users`. |
-| Cafes / drinks              | Modules 3, 4, 9 | Cafe, drink, pricing, featured/signature flags                                                                                                           |
-| Ratings                     | Module 5        | One rating per (member, drink)                                                                                                                           |
-| Memberships / credit ledger | Module 7        | Append-only ledger, not just a mutable balance column — see below                                                                                        |
-| Redemptions                 | Module 8        | See [docs/architecture/redemption.md](redemption.md) for the concurrency-critical write path                                                             |
-| Payouts                     | Module 9        | Per-cafe payout runs, references redemptions by the rate stored at redemption time                                                                       |
+| Schema area                 | PRD module      | Notes                                                                                                                                                                                                       |
+| --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Users / accounts            | Module 2        | **Implemented** — see the account schema table above. Memberships and OAuth identities are separate, not-yet-built schema areas, not columns on `users`.                                                    |
+| Cafes / drinks              | Modules 3, 4, 9 | **Implemented** — see above. Cafe, drink, pricing, featured/signature flags. No payout-rate column (separate, later schema area).                                                                           |
+| Ratings                     | Module 5        | **Implemented** — see above. One rating per (member, drink), editable, not deletable (see [open-questions.md #8](../decisions/open-questions.md#8-drink-and-cafe-rating-details-not-specified-by-the-prd)). |
+| Memberships / credit ledger | Module 7        | **Implemented** — append-only ledger, not just a mutable balance column — see below                                                                                                                         |
+| Redemptions                 | Module 8        | **Implemented** — see [docs/architecture/redemption.md](redemption.md) for the concurrency-critical write path                                                                                              |
+| Payouts                     | Module 9        | Not yet built. Per-cafe payout runs, references `redemptions` by the `payout_rate_cents` already stored on each row at redemption time                                                                      |
 
 ## Non-negotiable rules for the credit ledger and redemption schema
 

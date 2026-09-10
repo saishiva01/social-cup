@@ -14,7 +14,8 @@ const envSchema = z.object({
     .transform((value) => value === 'true'),
 
   // Comma-separated list of allowed browser origins (admin panel, barista
-  // scan page, and — during development — the Expo dev server / web preview).
+  // scan page, apps/web's verify-email/reset-password pages, and — during
+  // development — the Expo dev server / web preview).
   CORS_ALLOWED_ORIGINS: z
     .string()
     .min(1)
@@ -32,10 +33,12 @@ const envSchema = z.object({
   SENTRY_DSN: z.union([z.string().url(), z.literal('').transform(() => undefined)]).optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 
-  // Transactional email (verification, password reset). One SMTP transport
-  // for every environment — MailDev locally (no auth), Amazon SES's SMTP
-  // interface in staging/production (see docs/architecture/authentication.md)
-  // — so no provider-specific code lives in the auth routes.
+  // Transactional email (verification, password reset), sent through the
+  // EmailService abstraction (apps/api/src/services/email/) — no
+  // provider-specific code lives in the auth routes. EMAIL_PROVIDER selects
+  // the implementation: `maildev` (SMTP, local dev, see docker-compose.yml)
+  // or `resend` (Resend's HTTP API, staging/production).
+  EMAIL_PROVIDER: z.enum(['maildev', 'resend']).default('maildev'),
   SMTP_HOST: z.string().min(1).default('localhost'),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
   SMTP_SECURE: z
@@ -44,17 +47,51 @@ const envSchema = z.object({
     .transform((value) => value === 'true'),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().min(1).default('Social Cup <no-reply@socialcup.app>'),
 
-  // Deep-link prefixes for the verification/reset links embedded in emails.
-  // Defaults target the socialcup:// scheme (production mobile app); local
-  // Expo Go development needs exp://<host>:<port>/--/verify-email?token= —
-  // see apps/api/.env.example.
-  EMAIL_VERIFICATION_URL_PREFIX: z.string().min(1).default('socialcup://verify-email?token='),
-  PASSWORD_RESET_URL_PREFIX: z.string().min(1).default('socialcup://reset-password?token='),
+  // Base URL of the public web app (apps/web) that hosts the /verify-email
+  // and /reset-password landing pages linked from emails — see
+  // docs/architecture/authentication.md. Must be a real https:// origin in
+  // staging/production; the local default points at apps/web's dev server.
+  APP_WEB_URL: z.string().url().default('http://localhost:5175'),
+
+  // Stripe (PRD Module 7, docs/architecture/payments.md). The secret key and
+  // webhook signing secret are real secrets (ADR-0007: AWS Secrets Manager in
+  // staging/production, git-ignored .env locally) — never exposed to any
+  // client. STRIPE_PRICE_ID is the server-owned price for the one $24.99/mo
+  // plan (ADR-0009) — the mobile client never supplies a price or amount.
+  STRIPE_SECRET_KEY: z.string().min(1),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1),
+  STRIPE_PRICE_ID: z.string().min(1),
+  // The Stripe API version pinned for the ephemeral key issued to the mobile
+  // PaymentSheet (Stripe requires this to match the version the client SDK
+  // was compiled against, which can differ from this server's own pinned
+  // library version) — see docs/architecture/payments.md. Adjustable without
+  // a code change if @stripe/stripe-react-native's expected version changes.
+  STRIPE_API_VERSION: z.string().min(1).default('2024-06-20'),
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+const validatedEnvSchema = envSchema.superRefine((value, ctx) => {
+  if (value.EMAIL_PROVIDER === 'resend' && !value.RESEND_API_KEY) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['RESEND_API_KEY'],
+      message: 'RESEND_API_KEY is required when EMAIL_PROVIDER=resend',
+    });
+  }
+  // A production-like environment that falls back to MailDev would silently
+  // stop delivering real user email — fail startup instead.
+  if (value.NODE_ENV === 'production' && value.EMAIL_PROVIDER !== 'resend') {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['EMAIL_PROVIDER'],
+      message: 'EMAIL_PROVIDER must be "resend" when NODE_ENV=production',
+    });
+  }
+});
 
 let cachedEnv: Env | undefined;
 
@@ -65,7 +102,7 @@ let cachedEnv: Env | undefined;
  * confusingly at first use.
  */
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  cachedEnv ??= parseEnv(envSchema, source);
+  cachedEnv ??= parseEnv(validatedEnvSchema, source);
   return cachedEnv;
 }
 

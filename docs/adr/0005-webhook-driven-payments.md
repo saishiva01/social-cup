@@ -2,8 +2,11 @@
 
 ## Status
 
-Accepted (design decision for Module 7 — not yet implemented; see
-[docs/development/phases.md](../development/phases.md)).
+Accepted and implemented (Phase 4 — PRD Module 7). See
+[ADR-0011](0011-stripe-webhook-events-and-idempotency.md) for the exact event list actually
+implemented (Social Cup uses the Subscriptions API + native PaymentSheet, not Stripe Checkout, so
+there is no `checkout.session.completed` in the final event list below) and the transactional
+idempotency pattern.
 
 ## Context
 
@@ -37,8 +40,8 @@ see [docs/architecture/payments.md](../architecture/payments.md).
   assuming the grant is instantaneous with the payment-sheet callback.
 - If a second checkout entry point is ever added (the Apple-rejection fallback discussed in
   [open-questions.md #3](../decisions/open-questions.md#3-apple-in-app-purchase-rejection-fallback)),
-  it plugs into the same webhook-driven grant logic — a new *way to pay*, not a new *way to
-  become a Member*.
+  it plugs into the same webhook-driven grant logic — a new _way to pay_, not a new _way to
+  become a Member_.
 - Requires the webhook route to receive Stripe's raw request body for signature verification —
   see the Express body-parser ordering note in
   [docs/architecture/payments.md](../architecture/payments.md).

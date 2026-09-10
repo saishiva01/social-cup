@@ -1,12 +1,12 @@
 import { Link, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 
+import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 
 /**
  * Reached from the verification email link (deep link
@@ -16,13 +16,13 @@ import { useAuth } from '@/contexts/auth-context';
 export default function VerifyEmailScreen() {
   const { token } = useLocalSearchParams<{ token?: string }>();
   const { verifyEmail } = useAuth();
-  const [state, setState] = useState<'verifying' | 'success' | 'failed'>('verifying');
+  const theme = useTheme();
+  const [state, setState] = useState<'verifying' | 'success' | 'failed'>(
+    token ? 'verifying' : 'failed',
+  );
 
   useEffect(() => {
-    if (!token) {
-      setState('failed');
-      return;
-    }
+    if (!token) return;
     let cancelled = false;
     verifyEmail(token)
       .then(() => {
@@ -37,70 +37,57 @@ export default function VerifyEmailScreen() {
   }, [token, verifyEmail]);
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content}>
-          {state === 'verifying' ? (
-            <>
-              <ActivityIndicator size="large" />
-              <ThemedText type="subtitle" style={styles.title}>
-                Verifying your email…
-              </ThemedText>
-            </>
-          ) : null}
+    <ScreenContainer header>
+      {state === 'verifying' ? (
+        <>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <ThemedText type="subtitle" style={styles.title}>
+            Verifying your email…
+          </ThemedText>
+        </>
+      ) : null}
 
-          {state === 'success' ? (
-            <>
-              <ThemedText type="subtitle" style={styles.title}>
-                Email verified
-              </ThemedText>
-              <ThemedText type="default" style={styles.body}>
-                Your account is ready. You can now sign in.
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                <Link href="/login">Sign in</Link>
-              </ThemedText>
-            </>
-          ) : null}
+      {state === 'success' ? (
+        <>
+          <ThemedText type="subtitle" style={styles.title}>
+            Email verified
+          </ThemedText>
+          <ThemedText type="default" themeColor="textSecondary" style={styles.body}>
+            Your account is ready. You can now sign in.
+          </ThemedText>
+          <ThemedText type="small" style={styles.centered}>
+            <Link href="/login">Sign in</Link>
+          </ThemedText>
+        </>
+      ) : null}
 
-          {state === 'failed' ? (
-            <>
-              <ThemedText type="subtitle" style={styles.title}>
-                Verification link invalid
-              </ThemedText>
-              <ThemedText type="default" style={styles.body}>
-                This link is invalid or has expired. You can sign in and request a new one from the
-                sign-in screen.
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                <Link href="/login">Go to sign in</Link>
-              </ThemedText>
-            </>
-          ) : null}
-        </ScrollView>
-      </SafeAreaView>
-    </ThemedView>
+      {state === 'failed' ? (
+        <>
+          <ThemedText type="subtitle" style={styles.title}>
+            Verification link invalid
+          </ThemedText>
+          <ThemedText type="default" themeColor="textSecondary" style={styles.body}>
+            This link is invalid or has expired. Sign in with your email and password and we&apos;ll
+            offer to resend a fresh verification link.
+          </ThemedText>
+          <ThemedText type="small" style={styles.centered}>
+            <Link href="/login">Go to sign in</Link>
+          </ThemedText>
+        </>
+      ) : null}
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    padding: Spacing.four,
-    justifyContent: 'center',
-    flexGrow: 1,
-    gap: Spacing.two,
-  },
   title: {
     textAlign: 'center',
   },
   body: {
     textAlign: 'center',
-    marginBottom: Spacing.three,
+    marginTop: -Spacing.two,
+  },
+  centered: {
+    textAlign: 'center',
   },
 });

@@ -8,6 +8,9 @@ vi.stubEnv('REFRESH_TOKEN_SECRET', 'b'.repeat(32));
 vi.stubEnv('DATABASE_URL', 'postgres://user:pass@localhost:5432/db');
 vi.stubEnv('DATABASE_SSL', 'false');
 vi.stubEnv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173');
+vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_fake');
+vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_test_fake');
+vi.stubEnv('STRIPE_PRICE_ID', 'price_test_fake');
 
 describe('password hashing', () => {
   let hashPassword: typeof passwordLib.hashPassword;

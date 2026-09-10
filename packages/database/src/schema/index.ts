@@ -5,3 +5,9 @@
  */
 export * from './users.js';
 export * from './authTokens.js';
+export * from './cafes.js';
+export * from './ratings.js';
+export * from './memberships.js';
+export * from './barista.js';
+export * from './redemptions.js';
+export * from './adminOps.js';

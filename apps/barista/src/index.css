@@ -1,0 +1,176 @@
+/* Minimal, functional styling only (Phase 5) — no design system exists yet
+   for this app; broad visual refinement is deliberately a later phase (see
+   root CLAUDE.md). Large touch targets and high-contrast green/red states
+   are the one real design requirement here: PRD Module 8 says the barista
+   "points a camera and reads a green or red screen" at counter distance. */
+
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #faf7f2;
+  color: #1a1a1a;
+}
+
+.screen {
+  min-height: 100vh;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.screen-center {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+h1 {
+  font-size: 28px;
+  margin: 0;
+}
+
+.subtitle {
+  color: #555;
+  max-width: 360px;
+}
+
+.status {
+  color: #555;
+}
+
+.status-error {
+  color: #b3261e;
+  font-weight: 600;
+}
+
+.pin-form,
+.code-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+}
+
+input {
+  font-size: 24px;
+  padding: 16px;
+  border: 2px solid #ccc;
+  border-radius: 12px;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+button {
+  font-size: 18px;
+  font-weight: 700;
+  padding: 16px;
+  border-radius: 999px;
+  border: none;
+  background: #1a1a1a;
+  color: #fff;
+  min-height: 56px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #bbb;
+  cursor: not-allowed;
+}
+
+.link-button {
+  background: none;
+  color: #1a1a1a;
+  text-decoration: underline;
+  padding: 8px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.scan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.result {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 16px;
+  padding: 32px;
+  min-height: 320px;
+}
+
+.result-success {
+  background: #1e7a34;
+  color: #fff;
+}
+
+.result-failure {
+  background: #b3261e;
+  color: #fff;
+}
+
+.result-icon {
+  font-size: 64px;
+  margin: 0;
+}
+
+.result-headline {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+  text-align: center;
+}
+
+.result-detail {
+  font-size: 18px;
+  margin: 0;
+}
+
+.member-photo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.tap-hint {
+  text-align: center;
+  color: #777;
+  margin-top: 8px;
+}
+
+.today-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.today-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: 12px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e5e0d8;
+}

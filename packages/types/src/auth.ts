@@ -17,6 +17,13 @@ export interface PublicUser {
   coffeePreferences: CoffeePreference[];
   neighborhood: string | null;
   emailVerified: boolean;
+  /**
+   * Server-side admin capability (Phase 6), orthogonal to Visitor/Member
+   * subscription state (ADR-0008) — surfaced here only so a client can show
+   * or hide admin-only UI; every admin API route re-checks this from the
+   * database on every request (`requireAdmin`), never trusting this field.
+   */
+  role: 'user' | 'admin';
 }
 
 export interface AuthTokens {

@@ -20,6 +20,10 @@ vi.stubEnv('DATABASE_SSL', 'false');
 vi.stubEnv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173');
 vi.stubEnv('ACCESS_TOKEN_SECRET', 'a'.repeat(32));
 vi.stubEnv('REFRESH_TOKEN_SECRET', 'b'.repeat(32));
+vi.stubEnv('APP_WEB_URL', 'https://web.test.socialcup.app');
+vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_fake');
+vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_test_fake');
+vi.stubEnv('STRIPE_PRICE_ID', 'price_test_fake');
 
 describe.skipIf(skip)('auth flows (real Postgres)', () => {
   let client: Awaited<ReturnType<typeof setupTestDatabase>>['client'];
@@ -82,6 +86,26 @@ describe.skipIf(skip)('auth flows (real Postgres)', () => {
       expect(sent.to).toBe('ada@example.com');
       expect(sent.subject).toContain('Verify');
       expect(sent.text).not.toContain('correct-horse');
+
+      const hrefMatch = sent.html.match(/<a[^>]+href="([^"]+)"[^>]*>/);
+      expect(hrefMatch).not.toBeNull();
+      expect(hrefMatch![1]).toMatch(/verify-email\?token=/);
+      expect(sent.text).toContain(hrefMatch![1]);
+    });
+
+    it('builds the verification link from APP_WEB_URL as a real HTTPS URL', async () => {
+      await request(await app())
+        .post('/api/v1/auth/register')
+        .send(registerBody)
+        .expect(201);
+
+      const sent = emails.sent[0]!;
+      const hrefMatch = sent.html.match(/<a[^>]+href="([^"]+)"[^>]*>Verify my email<\/a>/);
+      expect(hrefMatch).not.toBeNull();
+      const verifyUrl = new URL(hrefMatch![1]!);
+      expect(verifyUrl.origin).toBe('https://web.test.socialcup.app');
+      expect(verifyUrl.pathname).toBe('/verify-email');
+      expect(verifyUrl.searchParams.get('token')).toBeTruthy();
     });
 
     it('never returns the password or password hash anywhere in the response', async () => {
@@ -380,6 +404,7 @@ describe.skipIf(skip)('auth flows (real Postgres)', () => {
         coffeePreferences: [],
         neighborhood: null,
         emailVerified: true,
+        role: 'user',
       });
       const body = JSON.stringify(res.body);
       expect(body).not.toContain('passwordHash');
@@ -586,6 +611,13 @@ describe.skipIf(skip)('auth flows (real Postgres)', () => {
       expect(resetEmail.subject).toContain('Reset');
       expect(resetEmail.text).toContain('expires in 1 hour');
       expect(resetEmail.text).not.toContain('correct-horse');
+
+      const hrefMatch = resetEmail.html.match(/<a[^>]+href="([^"]+)"[^>]*>Reset my password<\/a>/);
+      expect(hrefMatch).not.toBeNull();
+      const resetUrl = new URL(hrefMatch![1]!);
+      expect(resetUrl.origin).toBe('https://web.test.socialcup.app');
+      expect(resetUrl.pathname).toBe('/reset-password');
+      expect(resetUrl.searchParams.get('token')).toBeTruthy();
     });
 
     it('resets the password end-to-end and invalidates previous credentials and sessions', async () => {

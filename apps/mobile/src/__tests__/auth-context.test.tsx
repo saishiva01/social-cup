@@ -54,6 +54,7 @@ const USER = {
   coffeePreferences: [],
   neighborhood: null,
   emailVerified: true,
+  role: 'user' as const,
 };
 
 function wrapper({ children }: { children: ReactNode }) {

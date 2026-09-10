@@ -5,20 +5,47 @@
 
 import { Platform } from 'react-native';
 
+/**
+ * Semantic color tokens. Screens should always read a role (`primary`,
+ * `error`, `textMuted`, ...) via useTheme()/ThemedText/ThemedView rather
+ * than hard-coding a hex value — that's what keeps every screen visually
+ * consistent and theme-aware in one place. `#208AEF` is the established
+ * Social Cup brand blue (already used for the splash screen in app.json);
+ * `error`/`success` match the colors already used ad hoc across the Phase 1
+ * auth screens, promoted here so they're defined once.
+ */
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#211F15',
+    textSecondary: '#6E6F57',
+    textMuted: '#9A9884',
+    background: '#F8F6EF',
+    surface: '#F1EEE3',
+    backgroundElement: '#FFFFFF',
+    backgroundSelected: '#ECE8D8',
+    border: '#DAD6C4',
+    primary: '#7C8B4A',
+    primaryPressed: '#6C7A3E',
+    primaryText: '#1F2410',
+    error: '#C1442C',
+    success: '#188038',
+    disabled: '#D8D5C2',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F5F3E8',
+    textSecondary: '#C7C6B0',
+    textMuted: '#8F8D78',
+    background: '#17160F',
+    surface: '#201F16',
+    backgroundElement: '#242316',
+    backgroundSelected: '#2E2C1C',
+    border: '#3A3826',
+    primary: '#9BB06A',
+    primaryPressed: '#84995A',
+    primaryText: '#141508',
+    error: '#FF6B60',
+    success: '#4ECB77',
+    disabled: '#41442A',
   },
 } as const;
 
@@ -49,6 +76,13 @@ export const Fonts = Platform.select({
   },
 });
 
+/** Custom Google Fonts loaded in the root layout (see useFonts in _layout.tsx). */
+export const BrandFonts = {
+  script: 'Pacifico_400Regular',
+  serif: 'Lora_400Regular',
+  serifBold: 'Lora_700Bold',
+} as const;
+
 export const Spacing = {
   half: 2,
   one: 4,
@@ -60,4 +94,15 @@ export const Spacing = {
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = 480;
+
+/** Corner-radius scale — inputs/buttons use `sm`, cards/containers use `md`/`lg`. */
+export const Radius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  pill: 999,
+} as const;
+
+/** Minimum comfortable touch target (Apple HIG / Material both recommend ~44-48pt). */
+export const MinTouchTarget = 44;

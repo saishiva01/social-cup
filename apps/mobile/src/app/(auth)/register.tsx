@@ -1,26 +1,39 @@
 import { Link } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRef, useState } from 'react';
+import { StyleSheet, TextInput } from 'react-native';
 
 import { FormField } from '@/components/form-field';
+import { PasswordField } from '@/components/password-field';
 import { PrimaryButton } from '@/components/primary-button';
+import { ScreenContainer } from '@/components/screen-container';
 import { SocialSignIn } from '@/components/social-sign-in';
+import { StatusMessage } from '@/components/status-message';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+
+const MIN_PASSWORD_LENGTH = 8;
 
 export default function RegisterScreen() {
   const { register } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [registered, setRegistered] = useState(false);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   async function handleSubmit() {
+    if (busy) return;
+    // Catching an obviously-too-short password client-side avoids a wasted
+    // round trip for the single rule the server actually enforces.
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setPasswordError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return;
+    }
+    setPasswordError(null);
     setBusy(true);
     setError(null);
     try {
@@ -35,119 +48,91 @@ export default function RegisterScreen() {
 
   if (registered) {
     return (
-      <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView contentContainerStyle={styles.content}>
-            <ThemedText type="subtitle">Check your email</ThemedText>
-            <ThemedText type="default" style={styles.body}>
-              We&apos;ve sent a verification link to {email.trim()}. Click it to finish creating
-              your account, then sign in.
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              <Link href="/login">Back to sign in</Link>
-            </ThemedText>
-          </ScrollView>
-        </SafeAreaView>
-      </ThemedView>
+      <ScreenContainer header>
+        <ThemedText type="subtitle">Check your email</ThemedText>
+        <ThemedText type="default" themeColor="textSecondary">
+          We&apos;ve sent a verification link to{' '}
+          <ThemedText type="default">{email.trim()}</ThemedText>. Open it on this device to confirm
+          your account, then come back and sign in.
+        </ThemedText>
+        <ThemedText type="small" style={styles.centered}>
+          <Link href="/login">Back to sign in</Link>
+        </ThemedText>
+      </ScreenContainer>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
-        >
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <ThemedText type="subtitle">Create your account</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-              Join Social Cup — $24.99/month for 30 drink credits, whenever you&apos;re ready.
-            </ThemedText>
+    <ScreenContainer header center={false}>
+      <ThemedText type="subtitle">Create your account</ThemedText>
+      <ThemedText type="default" themeColor="textSecondary">
+        Free to browse, rate, and build your diary.
+      </ThemedText>
 
-            <FormField
-              label="Display name"
-              value={displayName}
-              onChangeText={setDisplayName}
-              autoComplete="name"
-              textContentType="name"
-              testID="register-name"
-            />
-            <FormField
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              testID="register-email"
-            />
-            <FormField
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              textContentType="newPassword"
-              testID="register-password"
-            />
-            <ThemedText type="small" themeColor="textSecondary">
-              Minimum 8 characters.
-            </ThemedText>
+      <SocialSignIn />
 
-            {error ? (
-              <ThemedText type="small" style={styles.error} testID="register-error">
-                {error}
-              </ThemedText>
-            ) : null}
+      <FormField
+        label="Display name"
+        value={displayName}
+        onChangeText={setDisplayName}
+        autoComplete="name"
+        textContentType="name"
+        returnKeyType="next"
+        blurOnSubmit={false}
+        onSubmitEditing={() => emailRef.current?.focus()}
+        testID="register-name"
+      />
+      <FormField
+        ref={emailRef}
+        label="Email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+        returnKeyType="next"
+        blurOnSubmit={false}
+        onSubmitEditing={() => passwordRef.current?.focus()}
+        testID="register-email"
+      />
+      <PasswordField
+        ref={passwordRef}
+        label="Password"
+        value={password}
+        onChangeText={(value) => {
+          setPassword(value);
+          if (passwordError) setPasswordError(null);
+        }}
+        error={passwordError ?? undefined}
+        helperText={passwordError ? undefined : 'Minimum 8 characters.'}
+        returnKeyType="done"
+        onSubmitEditing={handleSubmit}
+        testID="register-password"
+      />
 
-            <PrimaryButton
-              label="Create account"
-              busy={busy}
-              onPress={handleSubmit}
-              testID="register-submit"
-            />
+      {error ? (
+        <StatusMessage variant="error" testID="register-error">
+          {error}
+        </StatusMessage>
+      ) : null}
 
-            <SocialSignIn />
+      <PrimaryButton
+        label="Create account"
+        busy={busy}
+        onPress={handleSubmit}
+        testID="register-submit"
+      />
 
-            <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-              Already have an account? <Link href="/login">Sign in</Link>
-            </ThemedText>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ThemedView>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+        Already have an account? <Link href="/login">Sign in</Link>
+      </ThemedText>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    padding: Spacing.four,
-    gap: Spacing.one,
-    justifyContent: 'center',
-    flexGrow: 1,
-  },
-  subtitle: {
-    marginBottom: Spacing.four,
-  },
-  body: {
-    marginBottom: Spacing.four,
-  },
-  error: {
-    color: '#D93025',
-    marginBottom: Spacing.two,
-  },
   centered: {
     textAlign: 'center',
-    marginTop: Spacing.two,
   },
 });

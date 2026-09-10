@@ -1,14 +1,15 @@
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRef, useState } from 'react';
+import { StyleSheet, TextInput } from 'react-native';
 
-import { FormField } from '@/components/form-field';
+import { PasswordField } from '@/components/password-field';
 import { PrimaryButton } from '@/components/primary-button';
+import { ScreenContainer } from '@/components/screen-container';
+import { StatusMessage } from '@/components/status-message';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+
+const MIN_PASSWORD_LENGTH = 8;
 
 /**
  * Reached from the email link (deep link socialcup://reset-password?token=...)
@@ -23,22 +24,19 @@ export default function ResetPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const confirmRef = useRef<TextInput>(null);
 
   if (!token) {
     return (
-      <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView contentContainerStyle={styles.content}>
-            <ThemedText type="subtitle">Invalid link</ThemedText>
-            <ThemedText type="default" style={styles.body}>
-              This password reset link is missing its token. Request a new one and try again.
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              <Link href="/forgot-password">Request a new link</Link>
-            </ThemedText>
-          </ScrollView>
-        </SafeAreaView>
-      </ThemedView>
+      <ScreenContainer header center={false}>
+        <ThemedText type="subtitle">Invalid link</ThemedText>
+        <ThemedText type="default" themeColor="textSecondary">
+          This password reset link is missing its token. Request a new one and try again.
+        </ThemedText>
+        <ThemedText type="small" style={styles.centered}>
+          <Link href="/forgot-password">Request a new link</Link>
+        </ThemedText>
+      </ScreenContainer>
     );
   }
 
@@ -48,9 +46,10 @@ export default function ResetPasswordScreen() {
   const resetToken = token;
 
   async function handleSubmit() {
+    if (busy) return;
     setError(null);
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
     }
     if (password !== confirmPassword) {
@@ -70,91 +69,62 @@ export default function ResetPasswordScreen() {
 
   if (done) {
     return (
-      <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView contentContainerStyle={styles.content}>
-            <ThemedText type="subtitle">Password updated</ThemedText>
-            <ThemedText type="default" style={styles.body}>
-              Your password has been reset. Sign in with your new password.
-            </ThemedText>
-            <PrimaryButton
-              label="Sign in"
-              onPress={() => router.replace('/login')}
-              testID="reset-done"
-            />
-          </ScrollView>
-        </SafeAreaView>
-      </ThemedView>
+      <ScreenContainer header center={false}>
+        <ThemedText type="subtitle">Password updated</ThemedText>
+        <StatusMessage variant="success">
+          Your password has been reset. Sign in with your new password.
+        </StatusMessage>
+        <PrimaryButton
+          label="Sign in"
+          onPress={() => router.replace('/login')}
+          testID="reset-done"
+        />
+      </ScreenContainer>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
-        >
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <ThemedText type="subtitle">Choose a new password</ThemedText>
+    <ScreenContainer header center={false}>
+      <ThemedText type="subtitle">Choose a new password</ThemedText>
 
-            <FormField
-              label="New password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              textContentType="newPassword"
-              testID="reset-password"
-            />
-            <FormField
-              label="Confirm new password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              textContentType="newPassword"
-              testID="reset-confirm"
-            />
+      <PasswordField
+        label="New password"
+        value={password}
+        onChangeText={setPassword}
+        helperText={error ? undefined : 'Minimum 8 characters.'}
+        returnKeyType="next"
+        blurOnSubmit={false}
+        onSubmitEditing={() => confirmRef.current?.focus()}
+        testID="reset-password"
+      />
+      <PasswordField
+        ref={confirmRef}
+        label="Confirm new password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        returnKeyType="done"
+        onSubmitEditing={handleSubmit}
+        testID="reset-confirm"
+      />
 
-            {error ? (
-              <ThemedText type="small" style={styles.error} testID="reset-error">
-                {error}
-              </ThemedText>
-            ) : null}
+      {error ? (
+        <StatusMessage variant="error" testID="reset-error">
+          {error}
+        </StatusMessage>
+      ) : null}
 
-            <PrimaryButton
-              label="Update password"
-              busy={busy}
-              onPress={handleSubmit}
-              testID="reset-submit"
-            />
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ThemedView>
+      <PrimaryButton
+        label="Update password"
+        busy={busy}
+        onPress={handleSubmit}
+        testID="reset-submit"
+      />
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    padding: Spacing.four,
-    gap: Spacing.one,
-    justifyContent: 'center',
-    flexGrow: 1,
-  },
-  body: {
-    marginBottom: Spacing.four,
-  },
-  error: {
-    color: '#D93025',
-    marginBottom: Spacing.two,
+  centered: {
+    textAlign: 'center',
   },
 });

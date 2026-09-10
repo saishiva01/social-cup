@@ -18,5 +18,6 @@ export function toPublicUser(user: UserRow): PublicUser {
     coffeePreferences: user.coffeePreferences as CoffeePreference[],
     neighborhood: user.neighborhood,
     emailVerified: user.emailVerifiedAt !== null,
+    role: user.role as PublicUser['role'],
   };
 }

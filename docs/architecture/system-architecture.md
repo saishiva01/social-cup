@@ -2,13 +2,15 @@
 
 ## Overview
 
-Social Cup runs one mobile app for members and two web surfaces — an admin panel for the Social
-Cup team, and a scan page for baristas — on top of a single Node.js/Express backend. All
-persistent records live in PostgreSQL on AWS RDS. Photos live in S3, served through CloudFront.
-Stripe owns subscription billing and payment collection; the backend only reacts to Stripe
-webhooks and never stores card data. See [docs/product/prd.md](../product/prd.md) Section 4 for
-the PRD's own architecture summary — this document expands it into concrete component
-boundaries and request flow.
+Social Cup runs one mobile app for members and three web surfaces — an admin panel for the
+Social Cup team, a scan page for baristas, and a small public web app for email-linked identity
+flows — on top of a single Node.js/Express backend. All persistent records live in PostgreSQL on
+AWS RDS. Photos live in S3, served through CloudFront. Stripe owns subscription billing and
+payment collection; the backend only reacts to Stripe webhooks and never stores card data.
+Transactional email (verification, password reset) goes through Resend's HTTP API, not AWS — see
+"Email delivery" below. See [docs/product/prd.md](../product/prd.md) Section 4 for the PRD's own
+architecture summary — this document expands it into concrete component boundaries and request
+flow.
 
 ```
                               ┌─────────────────────┐
@@ -24,12 +26,21 @@ boundaries and request flow.
 │ (React/Vite)│            │   behind an ALB            │    │  (cafe/drink   │
 └────────────┘            │                            │    │   photos)      │
 ┌────────────┐   HTTPS    │                            │    └───────────────┘
-│ Barista scan│───────────▶│                            │───▶  Amazon SES
-│ (React/Vite)│            └────────────────────────────┘      (transactional email)
+│ Barista scan│───────────▶│                            │───▶  Resend
+│ (React/Vite)│            │                            │      (transactional email;
+└────────────┘            │                            │       MailDev locally)
+┌────────────┐   HTTPS    │                            │
+│ apps/web    │───────────▶│                            │
+│ (React/Vite)│            └────────────────────────────┘
 └────────────┘
 ```
 
-Every client — mobile, admin, barista — talks to the same versioned REST API
+`apps/web` is not a client that calls the API on a member's behalf like the others — it's the
+landing page opened from a verification/reset email link, which then calls the API to complete
+that one action (see "apps/web" below and
+[docs/architecture/authentication.md](authentication.md)).
+
+Every client — mobile, admin, barista, web — talks to the same versioned REST API
 (`/api/v1/...`; see `apps/api/README.md`). There is no BFF-per-client layer; access control
 differences between roles (Member, Visitor, Barista, Administrator) are enforced by
 authorization middleware/policy inside the one API, not by exposing different services.
@@ -55,11 +66,19 @@ routing framework beyond what's needed for a PIN-gate → scan → result flow. 
 established by a per-cafe PIN (see [docs/architecture/redemption.md](redemption.md)), not by a
 user login — cafes were explicitly scoped to need no account (PRD Module 8, Target Audience).
 
+### apps/web — Public web app (identity flows)
+
+React + Vite SPA, deliberately the smallest surface: two routes, `/verify-email` and
+`/reset-password`, no account system of its own, no authenticated session. It exists because a
+verification/password-reset email needs a link that opens on any device from any mail client —
+see "Email delivery" below and [docs/architecture/authentication.md](authentication.md). Not the
+admin panel or barista page; it has no non-public, no team-only surface.
+
 ### apps/api — Backend REST API
 
 Node.js + Express + TypeScript, the only service that talks directly to PostgreSQL, Stripe's
-API, S3, and SES. Every credit-affecting operation (grant, deduct, reset, void) happens here and
-only here — see the financial rules in the root [CLAUDE.md](../../CLAUDE.md). Deployed as a
+API, S3, and Resend. Every credit-affecting operation (grant, deduct, reset, void) happens here
+and only here — see the financial rules in the root [CLAUDE.md](../../CLAUDE.md). Deployed as a
 container on ECS/Fargate behind an Application Load Balancer; horizontally scalable (stateless
 process — no in-memory session state that isn't safe to lose when a task recycles, aside from the
 documented rate-limit-store caveat in
@@ -97,12 +116,28 @@ S3 bucket, and ECS service, provisioned from the same Terraform modules with dif
 AWS at all: `docker-compose.yml` at the repo root runs Postgres + a local SMTP catcher
 (maildev), and `apps/api` runs directly via `pnpm dev`.
 
+## Email delivery
+
+Transactional email (verification, password reset) is sent through the `EmailService`
+abstraction in `apps/api/src/services/email/`, never called directly from a route. The
+implementation is chosen by the `EMAIL_PROVIDER` env var:
+
+- **Local:** `EMAIL_PROVIDER=maildev` (default) — SMTP to the local MailDev container, no real
+  delivery, inspectable at `http://localhost:1080`.
+- **Staging/production:** `EMAIL_PROVIDER=resend` — Resend's HTTP API. `apps/api/src/env.ts`
+  refuses to start with `NODE_ENV=production` unless this is set, so production can never
+  silently fall back to MailDev.
+
+No AWS SES, no AWS email infrastructure — see
+[docs/architecture/authentication.md](authentication.md) for the full email-verification/reset
+flow and `apps/web/README.md` for local MailDev testing and Resend domain-verification setup.
+
 ## Cross-cutting concerns
 
 - **Authentication** — see [docs/architecture/authentication.md](authentication.md).
 - **Payments** — see [docs/architecture/payments.md](payments.md).
 - **Redemption concurrency** — see [docs/architecture/redemption.md](redemption.md).
-- **Monitoring** — Sentry across all four apps (mobile, admin, barista, api) for error/crash
+- **Monitoring** — Sentry across all five apps (mobile, admin, barista, web, api) for error/crash
   reporting; CloudWatch for API logs and infrastructure metrics. Sentry DSNs are per-app,
   configured via environment variables, never hardcoded.
 - **Security headers, CORS, rate limiting** — enforced centrally in `apps/api` (helmet, an

@@ -34,13 +34,13 @@ can match `status = 'active'` and win.
 ## Consequences
 
 - Every redemption-code validation query must include `AND status = 'active' AND expires_at >
-  now()` in the same statement that performs the transition — a separate `SELECT` to check
+now()` in the same statement that performs the transition — a separate `SELECT` to check
   status "first" followed by an `UPDATE` is exactly the race this ADR exists to prevent, and must
   not be reintroduced during implementation for convenience (e.g. to produce a nicer error
   message before attempting the update).
 - The specific red-result reason (expired vs. already-used vs. wrong-cafe vs. membership-inactive
   vs. insufficient-credits) requires a follow-up read after a failed conditional update returns
-  zero rows, purely to report *why* to the barista — that follow-up read must not be used to
+  zero rows, purely to report _why_ to the barista — that follow-up read must not be used to
   decide whether to proceed with the deduction, only to explain a decision already made.
 - This pattern is the one required, tested behavior — see
   [docs/development/testing-strategy.md](../development/testing-strategy.md) for the concurrent-scan

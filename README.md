@@ -18,6 +18,7 @@ apps/
   mobile/       React Native + Expo + Expo Router — member app (iOS/Android)
   admin/        React + Vite — Social Cup team admin panel
   barista/      React + Vite — lightweight cafe scan page, no app/account
+  web/          React + Vite — public web app (email verification, password reset links)
   api/          Node.js + Express + TypeScript — the one backend
 packages/
   database/     Drizzle ORM schema, migrations, Postgres client
@@ -47,6 +48,7 @@ pnpm infra:up
 cp apps/api/.env.example apps/api/.env
 cp apps/admin/.env.example apps/admin/.env
 cp apps/barista/.env.example apps/barista/.env
+cp apps/web/.env.example apps/web/.env
 cp apps/mobile/.env.example apps/mobile/.env
 cp packages/database/.env.example packages/database/.env
 
@@ -57,11 +59,13 @@ pnpm dev
 pnpm --filter @social-cup/api dev
 pnpm --filter @social-cup/admin dev
 pnpm --filter @social-cup/barista dev
+pnpm --filter @social-cup/web dev
 pnpm --filter @social-cup/mobile dev
 ```
 
 `apps/api` listens on `http://localhost:3000` — `GET /health` for liveness, `GET /health/ready`
-for a database-connectivity check. `apps/admin` on `:5173`, `apps/barista` on `:5174`,
+for a database-connectivity check. `apps/admin` on `:5173`, `apps/barista` on `:5174`, `apps/web`
+(email verification / password reset landing pages, see `apps/web/README.md`) on `:5175`,
 `apps/mobile` via the Expo CLI (press `i`/`a`/`w`).
 
 ## Common commands (from the repo root)

@@ -2,10 +2,18 @@
 
 ## Status
 
-No redemption code, endpoints, or schema exist yet (see
-[docs/development/phases.md](../development/phases.md)). This document defines the concurrency
-design that implementation must follow — it is the single most safety-critical piece of Social
-Cup, called out explicitly in the root [CLAUDE.md](../../CLAUDE.md):
+**Implemented (Phase 5, PRD Module 8).** Schema (`redemption_codes`, `redemptions`,
+`cafe_barista_credentials`, `barista_trusted_devices` — migration `0004_square_big_bertha.sql`,
+`packages/database/src/schema/{redemptions,barista}.ts`), the member-facing creation/polling API
+(`apps/api/src/services/redemptionService.ts`, `routes/v1/redemptions.ts`), the barista PIN/scan
+API (`apps/api/src/services/baristaService.ts`, `routes/v1/barista.ts`), the mobile redemption
+flow (`apps/mobile/src/app/redeem/[drinkId].tsx`), and the barista web app (`apps/barista/src/`)
+all exist. The atomic conditional-UPDATE pattern this document specifies (below) is implemented
+exactly as written in `baristaService.redeem` — see that function's comments for how each
+paragraph below maps to code. Camera/QR scanning is **not** implemented — see "What's explicitly
+deferred". This document defines the concurrency design implementation follows — it is the single
+most safety-critical piece of Social Cup, called out explicitly in the root
+[CLAUDE.md](../../CLAUDE.md):
 
 > Two simultaneous scans of the same code must never result in two successful redemptions.
 
@@ -90,8 +98,8 @@ comfortably fits that budget; it is not a tradeoff between "fast" and "correct."
 
 A five-minute-expired code must be rejected by the validation query itself (`expires_at > now()`
 in the `WHERE` clause above), not by relying on a background job having already run — the job
-(PRD Module 1.2: *"a second scheduled job clears redemption codes that were generated but never
-scanned"*) is garbage collection for the codes table, not a correctness dependency. See
+(PRD Module 1.2: _"a second scheduled job clears redemption codes that were generated but never
+scanned"_) is garbage collection for the codes table, not a correctness dependency. See
 [docs/architecture/infrastructure.md](infrastructure.md) for how that scheduled job is wired
 (EventBridge Scheduler → ECS task).
 
@@ -102,10 +110,49 @@ code at the same moment" — i.e. an integration test that fires concurrent requ
 redemption endpoint for the same code and asserts exactly one success. See
 [docs/development/testing-strategy.md](../development/testing-strategy.md).
 
+## Barista authentication and trusted devices (as implemented)
+
+Barista access has no user account and does not use the access/refresh token scheme in
+[docs/architecture/authentication.md](authentication.md) at all. Instead:
+
+- `cafe_barista_credentials` (one row per cafe, added to the barista flow) stores `pinHash`
+  (bcrypt, same helper as member passwords, `apps/api/src/lib/password.ts`) and `payoutRateCents`
+  — deliberately a **separate table from `cafes`**, not columns on it, so the public
+  cafe-discovery API can never leak a PIN hash or payout rate through a `select()`.
+- `POST /barista/authenticate` takes `{ cafeId, pin }` (the cafe id is not secret — see PRD Module
+  8: "the link is not a secret, the PIN is the credential") and, on a correct PIN, issues an
+  opaque, SHA-256-hashed device token (`barista_trusted_devices`, same pattern as `refresh_tokens`
+  — ADR-0004) in an httpOnly, `SameSite=Strict` cookie scoped to `/api/v1/barista`
+  (`apps/api/src/lib/baristaCookie.ts`). The raw PIN and the raw device token are never logged and
+  the device token is never readable from JavaScript.
+- Every subsequent barista request derives its cafe **only** from that cookie
+  (`requireBaristaAuth` middleware → `baristaService.validateDeviceToken`), never from anything the
+  browser sends in a body/query — this is what makes "a barista cannot choose another cafe" a
+  server-enforced property, not a UI convention.
+- `pinVersion` on `cafe_barista_credentials` plus `pinVersionAtIssue` on each trusted-device row is
+  how a future admin PIN reset (Phase 6) invalidates every trusted device for a cafe at once
+  without deleting rows: bump `pinVersion`, and `validateDeviceToken` rejects any device whose
+  `pinVersionAtIssue` no longer matches.
+- Trusted-device duration (`BARISTA_TRUSTED_DEVICE_TTL_MS`, `apps/api/src/lib/tokens.ts`) is an
+  interim 90-day engineering default — the PRD says a device "stays trusted" but never states for
+  how long. See [docs/decisions/open-questions.md](../decisions/open-questions.md).
+
 ## What's explicitly deferred
 
+- **Camera/QR scanning.** The PRD's described UX has the barista's camera reading a QR code; this
+  phase implements manual entry of the primary code or the six-digit backup code only (see
+  `apps/barista/src/components/ScanScreen.tsx`) — both go through the identical
+  `POST /barista/redeem` validation, so a scanner can be added later feeding the same text input
+  without any change to the validation/transaction logic. Not a correctness gap, a UI scope cut.
 - Offline scanning when a cafe loses connectivity (Out of Scope, Phase 2 — PRD is explicit that a
   dropped connection must fail safely, not queue for later).
 - Any caching of code validity at the edge/CDN — every validation is a direct, uncached hit to
   the API and database, deliberately, because staleness here is a financial correctness bug, not
   a UX inconvenience.
+- The expired-code cleanup scheduled job (PRD Module 1.2) — the Terraform `scheduler` module
+  already anticipates it (`infrastructure/modules/scheduler/`), but wiring an actual job is
+  deferred AWS infrastructure work, consistent with how the Phase 4 monthly-reset job was never
+  wired either (superseded by the derived-balance query design, ADR-0011). This is pure table
+  hygiene, not a correctness dependency — see "Expiry and cleanup" above.
+- Admin PIN reset and cafe payout-rate management UI (Phase 6, Module 9) — the schema
+  (`pinVersion`, `payoutRateCents`) already supports both with no future migration.

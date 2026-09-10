@@ -85,3 +85,25 @@ export function resetPasswordRateLimit() {
 export function refreshRateLimit() {
   return authLimiter({ windowMs: 15 * 60 * 1000, limit: 60 }); // legit clients refresh ~every 15 min
 }
+
+export function subscribeRateLimit() {
+  return authLimiter({ windowMs: 15 * 60 * 1000, limit: 10 }); // Stripe customer/subscription creation
+}
+
+export function createRedemptionRateLimit() {
+  return authLimiter({ windowMs: 15 * 60 * 1000, limit: 20 }); // a member confirming a drink repeatedly
+}
+
+export function baristaAuthRateLimit() {
+  return authLimiter({ windowMs: 15 * 60 * 1000, limit: 10 }); // PIN brute force — PRD: "PIN attempts are rate limited"
+}
+
+/**
+ * Generous relative to login-style limiters: a busy cafe counter can
+ * legitimately submit a code (or mistype one) many times in 15 minutes, and
+ * every attempt here is additionally cafe-scoped by the trusted-device
+ * cookie, not just by IP — see docs/architecture/redemption.md.
+ */
+export function baristaRedeemRateLimit() {
+  return authLimiter({ windowMs: 15 * 60 * 1000, limit: 60 });
+}

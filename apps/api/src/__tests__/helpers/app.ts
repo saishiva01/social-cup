@@ -2,6 +2,7 @@ import type { Express } from 'express';
 import type { Sql } from '@social-cup/database';
 
 import type { EmailService, SendEmailParams } from '../../services/email/EmailService.js';
+import type { StripeService } from '../../services/stripe/StripeService.js';
 
 /**
  * Captures every email the services try to send so tests can assert
@@ -27,7 +28,11 @@ export class RecordingEmailService implements EmailService {
  * isolates the per-endpoint rate-limit counters (see
  * apps/api/src/middleware/rateLimit.ts).
  */
-export async function makeTestApp(client: Sql, emails: RecordingEmailService): Promise<Express> {
+export async function makeTestApp(
+  client: Sql,
+  emails: RecordingEmailService,
+  stripeService?: StripeService,
+): Promise<Express> {
   const { createApp } = await import('../../app.js');
-  return createApp({ client, emailService: emails });
+  return createApp({ client, emailService: emails, stripeService });
 }

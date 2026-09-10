@@ -16,3 +16,29 @@ export function validateBody<TSchema extends z.ZodTypeAny>(schema: TSchema): Req
     }
   };
 }
+
+/**
+ * Parses req.query (e.g. search/filter/pagination params) and attaches the
+ * validated, coerced value as req.validatedQuery — req.query itself is a
+ * getter-only object on modern Express types, so it cannot be reassigned the
+ * way validateBody reassigns req.body.
+ */
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      validatedQuery?: unknown;
+    }
+  }
+}
+
+export function validateQuery<TSchema extends z.ZodTypeAny>(schema: TSchema): RequestHandler {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      req.validatedQuery = schema.parse(req.query);
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+}
