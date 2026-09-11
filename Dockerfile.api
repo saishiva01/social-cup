@@ -1,0 +1,44 @@
+# Builds and runs apps/api (the Social Cup backend) for a container host
+# (Railway). Only apps/api is ever run from the resulting image — the other
+# three frontends (apps/mobile, apps/admin, apps/barista) are separate
+# deploy targets with their own build process, not part of this image.
+#
+# Multi-stage: stage 1 installs the whole pnpm workspace (a single lockfile
+# covers every app/package, so a partial install isn't possible) and builds
+# only apps/api and its workspace dependencies (packages/database, types,
+# validation, utils, config) via Turborepo's dependency-aware `--filter`.
+# `pnpm deploy --prod` then assembles a minimal, self-contained production
+# folder for just @social-cup/api (pnpm resolves its workspace:* dependencies
+# into real files, not symlinks) — see
+# https://pnpm.io/cli/deploy. Stage 2 copies only that folder into a slim
+# runtime image, so the final image has no dev dependencies, no other app's
+# source, and no build tooling.
+
+FROM node:20-bookworm AS build
+RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
+WORKDIR /repo
+
+COPY . .
+RUN pnpm install --frozen-lockfile
+# Plain pnpm recursive filtering, not `turbo run build`: turbo's dependency
+# ordering raced packages/database ahead of packages/validation in a cold,
+# no-cache container build (a latent turbo.json/graph issue, reproducible
+# and worth its own fix later) — pnpm's own --filter=...... topological
+# ordering is what's actually relied on here, and is proven correct.
+RUN pnpm --filter=@social-cup/api... run build
+# --legacy: pnpm v10 defaults `pnpm deploy` to requiring
+# inject-workspace-packages=true (real copies at install time); --legacy
+# instead resolves workspace:* deps into the deploy output directly, which
+# is simpler here since nothing else needs the injected-symlink behavior.
+RUN pnpm --filter=@social-cup/api deploy /prod/api --prod --legacy
+
+FROM node:20-bookworm-slim AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /prod/api ./
+
+# Railway sets PORT itself; apps/api/src/env.ts reads it via the PORT env var
+# (default 3000 only applies when PORT is unset, e.g. running this image
+# outside Railway).
+EXPOSE 3000
+CMD ["node", "dist/index.js"]
