@@ -3,14 +3,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CafeImage } from '@/components/cafe-image';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { CardImage, Spacing } from '@/constants/theme';
 
 interface FeaturedCafeCardProps {
   cafe: CafeListItem;
   onPress: () => void;
 }
 
-const CARD_WIDTH = 200;
+const CARD_WIDTH = CardImage.featuredWidth;
 
 /** Compact, photo-forward card for the "New on Social Cup" curated strip (PRD Module 6). */
 export function FeaturedCafeCard({ cafe, onPress }: FeaturedCafeCardProps) {
@@ -37,16 +37,16 @@ export function FeaturedCafeCard({ cafe, onPress }: FeaturedCafeCardProps) {
 const styles = StyleSheet.create({
   container: {
     width: CARD_WIDTH,
-    gap: 4,
+    gap: 3,
   },
   pressed: {
     opacity: 0.9,
   },
   imageWrapper: {
     width: CARD_WIDTH,
-    height: 130,
-    borderRadius: Radius.md,
+    height: CardImage.featuredHeight,
+    borderRadius: CardImage.radius,
     overflow: 'hidden',
-    marginBottom: Spacing.half,
+    marginBottom: Spacing.two,
   },
 });

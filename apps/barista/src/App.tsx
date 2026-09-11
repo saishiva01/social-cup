@@ -1,3 +1,4 @@
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { PinScreen } from '@/components/PinScreen';
@@ -49,6 +50,7 @@ export function App() {
   if (stage.name === 'no-cafe') {
     return (
       <main className="screen screen-center">
+        <AlertTriangle size={32} color="var(--color-danger)" aria-hidden />
         <h1>Social Cup</h1>
         <p className="subtitle">
           This link is missing a café. Ask Social Cup for your café&apos;s private scan link.
@@ -60,7 +62,9 @@ export function App() {
   if (stage.name === 'checking') {
     return (
       <main className="screen screen-center">
-        <p className="status">Loading…</p>
+        <p className="status">
+          <Loader2 size={16} className="spin" aria-hidden /> Loading…
+        </p>
       </main>
     );
   }

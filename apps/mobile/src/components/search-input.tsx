@@ -1,6 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
 import { MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -24,6 +24,7 @@ export function SearchInput({
     <View
       style={[styles.row, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
     >
+      <Ionicons name="search" size={18} color={theme.textMuted} style={styles.searchIcon} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -44,9 +45,7 @@ export function SearchInput({
           onPress={() => onChangeText('')}
           style={styles.clearButton}
         >
-          <ThemedText type="smallBold" themeColor="textMuted">
-            ✕
-          </ThemedText>
+          <Ionicons name="close-circle" size={18} color={theme.textMuted} />
         </Pressable>
       ) : null}
     </View>
@@ -60,6 +59,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
+    gap: Spacing.one,
+  },
+  searchIcon: {
+    opacity: 0.9,
   },
   input: {
     flex: 1,

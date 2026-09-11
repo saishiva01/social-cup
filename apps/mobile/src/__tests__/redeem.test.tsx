@@ -172,7 +172,7 @@ describe('RedeemScreen', () => {
 
     fireEvent.press(screen.getByTestId('redeem-generate'));
 
-    await waitFor(() => expect(screen.getByText('Redeemed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Redeemed successfully')).toBeTruthy());
 
     fireEvent.press(screen.getByTestId('redeem-rate-drink'));
     expect(mockReplace).toHaveBeenCalledWith({

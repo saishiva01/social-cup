@@ -1,5 +1,5 @@
 import { COFFEE_PREFERENCES, type CoffeePreference } from '@social-cup/types';
-import { Link, Redirect, useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -74,14 +74,8 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScreenContainer center={false}>
-      <ThemedText type="small">
-        <Link href="/">← Back</Link>
-      </ThemedText>
-
-      <ThemedText type="subtitle">Your profile</ThemedText>
-
-      <SectionHeader title="Account" />
+    <ScreenContainer center={false} header title="Your profile">
+      <SectionHeader title="Account" first />
       <FormField label="Email" value={user?.email ?? ''} editable={false} testID="profile-email" />
       {user && !user.emailVerified ? (
         <StatusMessage variant="error">Your email address is not verified yet.</StatusMessage>
@@ -171,9 +165,14 @@ export default function ProfileScreen() {
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title, first = false }: { title: string; first?: boolean }) {
+  const theme = useTheme();
   return (
-    <ThemedText type="smallBold" themeColor="textMuted" style={styles.sectionHeader}>
+    <ThemedText
+      type="smallBold"
+      themeColor="textMuted"
+      style={[styles.sectionHeader, !first && { borderTopColor: theme.border, borderTopWidth: 1 }]}
+    >
       {title.toUpperCase()}
     </ThemedText>
   );
@@ -204,7 +203,7 @@ function PreferenceChip({
       ]}
       testID={`pref-${preference}`}
     >
-      <ThemedText type="small" style={{ color: selected ? '#ffffff' : undefined }}>
+      <ThemedText type="small" style={{ color: selected ? theme.primaryText : theme.text }}>
         {preferenceLabel(preference)}
       </ThemedText>
     </Pressable>
@@ -222,8 +221,9 @@ function preferenceLabel(preference: CoffeePreference): string {
 
 const styles = StyleSheet.create({
   sectionHeader: {
-    marginTop: Spacing.two,
-    letterSpacing: 0.5,
+    marginTop: Spacing.three,
+    paddingTop: Spacing.three,
+    letterSpacing: 0.8,
   },
   field: {
     gap: Spacing.one,

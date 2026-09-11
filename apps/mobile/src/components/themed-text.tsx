@@ -7,6 +7,7 @@ export type ThemedTextProps = TextProps & {
   type?:
     | 'default'
     | 'title'
+    | 'heading'
     | 'small'
     | 'smallBold'
     | 'subtitle'
@@ -26,6 +27,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         { color: theme[themeColor ?? (type === 'linkPrimary' ? 'primary' : 'text')] },
         type === 'default' && styles.default,
         type === 'title' && styles.title,
+        type === 'heading' && styles.heading,
         type === 'small' && styles.small,
         type === 'smallBold' && styles.smallBold,
         type === 'subtitle' && styles.subtitle,
@@ -65,6 +67,12 @@ const styles = StyleSheet.create({
     fontFamily: BrandFonts.serifBold,
     fontSize: 30,
     lineHeight: 38,
+  },
+  /** A mid-tier serif emphasis for a single important figure on a card (e.g. a price) — smaller than `subtitle`, still distinct from body text. */
+  heading: {
+    fontFamily: BrandFonts.serifBold,
+    fontSize: 24,
+    lineHeight: 30,
   },
   link: {
     lineHeight: 30,

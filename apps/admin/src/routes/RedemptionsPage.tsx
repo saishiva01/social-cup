@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { Badge } from '@/components/Badge';
 import { DataState } from '@/components/DataState';
 import { Pagination } from '@/components/Pagination';
 import { useAuth } from '@/contexts/auth-context';
@@ -17,7 +18,7 @@ export function RedemptionsPage() {
   const [dateTo, setDateTo] = useState('');
   const [voided, setVoided] = useState('');
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin', 'redemptions', page, dateFrom, dateTo, voided],
     queryFn: () =>
       api.getRedemptions({
@@ -31,9 +32,10 @@ export function RedemptionsPage() {
 
   return (
     <div>
-      <h2 className="text-base font-medium">Redemptions</h2>
+      <h1 className="text-xl font-semibold tracking-tight text-slate-900">Redemptions</h1>
+      <p className="mt-1 text-sm text-slate-500">Every redemption across every partner cafe.</p>
 
-      <div className="mt-4 flex flex-wrap items-end gap-3">
+      <div className="mt-5 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-card">
         <label className="text-sm">
           <span className="block text-xs font-medium text-slate-700">From</span>
           <input
@@ -43,7 +45,7 @@ export function RedemptionsPage() {
               setDateFrom(event.target.value);
               setPage(1);
             }}
-            className="mt-1 rounded border border-slate-300 px-3 py-2 text-sm"
+            className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
         </label>
         <label className="text-sm">
@@ -55,7 +57,7 @@ export function RedemptionsPage() {
               setDateTo(event.target.value);
               setPage(1);
             }}
-            className="mt-1 rounded border border-slate-300 px-3 py-2 text-sm"
+            className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
         </label>
         <label className="text-sm">
@@ -66,7 +68,7 @@ export function RedemptionsPage() {
               setVoided(event.target.value);
               setPage(1);
             }}
-            className="mt-1 rounded border border-slate-300 px-3 py-2 text-sm"
+            className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           >
             <option value="">All</option>
             <option value="false">Completed</option>
@@ -75,49 +77,60 @@ export function RedemptionsPage() {
         </label>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-card">
         <DataState
           isLoading={isLoading}
           error={error}
           isEmpty={(data?.items.length ?? 0) === 0}
           emptyMessage="No redemptions found."
+          onRetry={() => void refetch()}
         >
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-2">Member</th>
-                <th className="px-4 py-2">Cafe</th>
-                <th className="px-4 py-2">Drink</th>
-                <th className="px-4 py-2">Credits</th>
-                <th className="px-4 py-2">Payout</th>
-                <th className="px-4 py-2">When</th>
-                <th className="px-4 py-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data?.items.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
-                >
-                  <td className="px-4 py-2">
-                    <Link
-                      to={`/redemptions/${row.id}`}
-                      className="underline-offset-2 hover:underline"
-                    >
-                      {row.memberDisplayName}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2">{row.cafeName}</td>
-                  <td className="px-4 py-2">{row.drinkName}</td>
-                  <td className="px-4 py-2">{row.creditAmount}</td>
-                  <td className="px-4 py-2">{formatCents(row.payoutAmountCents)}</td>
-                  <td className="px-4 py-2">{formatDateTime(row.redeemedAt)}</td>
-                  <td className="px-4 py-2">{row.voided ? 'Voided' : 'Completed'}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-2.5">Member</th>
+                  <th className="px-4 py-2.5">Cafe</th>
+                  <th className="px-4 py-2.5">Drink</th>
+                  <th className="px-4 py-2.5">Credits</th>
+                  <th className="px-4 py-2.5">Payout</th>
+                  <th className="px-4 py-2.5">When</th>
+                  <th className="px-4 py-2.5">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data?.items.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                  >
+                    <td className="px-4 py-2.5">
+                      <Link
+                        to={`/redemptions/${row.id}`}
+                        className="font-medium text-slate-900 underline-offset-2 hover:underline"
+                      >
+                        {row.memberDisplayName}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-600">{row.cafeName}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{row.drinkName}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{row.creditAmount}</td>
+                    <td className="px-4 py-2.5 text-slate-600">
+                      {formatCents(row.payoutAmountCents)}
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-600">{formatDateTime(row.redeemedAt)}</td>
+                    <td className="px-4 py-2.5">
+                      {row.voided ? (
+                        <Badge tone="danger">Voided</Badge>
+                      ) : (
+                        <Badge tone="success">Completed</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {data && (
             <Pagination page={data.page} totalPages={data.totalPages} onPageChange={setPage} />
           )}

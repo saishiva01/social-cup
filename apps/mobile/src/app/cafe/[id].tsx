@@ -1,4 +1,5 @@
 import type { Drink, WeeklyHours } from '@social-cup/types';
+import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -11,6 +12,8 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 
 import { CafeImage } from '@/components/cafe-image';
@@ -73,6 +76,7 @@ export default function CafeDetailScreen() {
     return (
       <ScreenContainer header center>
         <EmptyState
+          icon={isNotFound ? 'alert-circle-outline' : 'cloud-offline-outline'}
           title={isNotFound ? 'This café is no longer available' : "Couldn't load this café"}
           subtitle={isNotFound ? undefined : 'Check your connection and try again.'}
           actionLabel={isNotFound ? undefined : 'Retry'}
@@ -207,8 +211,9 @@ export default function CafeDetailScreen() {
                         {drink.name}
                       </ThemedText>
                       {drink.signature ? (
-                        <View style={[styles.signatureBadge, { backgroundColor: theme.surface }]}>
-                          <ThemedText type="small" themeColor="textSecondary">
+                        <View style={styles.signatureBadge}>
+                          <Ionicons name="sparkles" size={11} color={theme.primary} />
+                          <ThemedText type="small" themeColor="primary">
                             Signature
                           </ThemedText>
                         </View>
@@ -287,6 +292,9 @@ function DrinkPickerModal({
                 style={[styles.modalRow, { borderColor: theme.border }]}
                 testID={rowTestID}
               >
+                <View style={styles.modalRowImage}>
+                  <CafeImage uri={drink.photoUrl} fallbackLabel={drink.name} />
+                </View>
                 <ThemedText type="default">{drink.name}</ThemedText>
               </Pressable>
             ))}
@@ -297,7 +305,12 @@ function DrinkPickerModal({
   );
 }
 
+const GALLERY_STEP = 340 + Spacing.two;
+
 function PhotoGallery({ photos, name }: { photos: string[]; name: string }) {
+  const theme = useTheme();
+  const [activeIndex, setActiveIndex] = useState(0);
+
   if (photos.length === 0) {
     return (
       <View style={styles.galleryImage}>
@@ -306,14 +319,43 @@ function PhotoGallery({ photos, name }: { photos: string[]; name: string }) {
     );
   }
 
+  function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    const index = Math.round(event.nativeEvent.contentOffset.x / GALLERY_STEP);
+    setActiveIndex(Math.min(Math.max(index, 0), photos.length - 1));
+  }
+
   return (
-    <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-      {photos.map((photo, index) => (
-        <View key={`${photo}-${index}`} style={styles.galleryImage}>
-          <CafeImage uri={photo} fallbackLabel={name} />
+    <View>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={32}
+      >
+        {photos.map((photo, index) => (
+          <View key={`${photo}-${index}`} style={styles.galleryImage}>
+            <CafeImage uri={photo} fallbackLabel={name} />
+          </View>
+        ))}
+      </ScrollView>
+      {photos.length > 1 ? (
+        <View style={styles.galleryDots} testID="gallery-dots">
+          {photos.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.galleryDot,
+                {
+                  backgroundColor: index === activeIndex ? theme.primary : theme.border,
+                  width: index === activeIndex ? 16 : 6,
+                },
+              ]}
+            />
+          ))}
         </View>
-      ))}
-    </ScrollView>
+      ) : null}
+    </View>
   );
 }
 
@@ -413,6 +455,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginRight: Spacing.two,
   },
+  galleryDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 5,
+    marginTop: Spacing.two,
+  },
+  galleryDot: {
+    height: 6,
+    borderRadius: 3,
+  },
   section: {
     gap: 4,
   },
@@ -468,9 +520,9 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   signatureBadge: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
-    borderRadius: Radius.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   drinkFooterRow: {
     flexDirection: 'row',
@@ -494,7 +546,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   modalRow: {
-    paddingVertical: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.two,
     borderBottomWidth: 1,
+  },
+  modalRowImage: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.sm,
+    overflow: 'hidden',
   },
 });

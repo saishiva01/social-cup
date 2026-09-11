@@ -42,14 +42,21 @@ export function PrimaryButton({
   const theme = useTheme();
   const isDisabled = disabled || busy;
 
-  const backgroundColor = isDisabled
+  const restBackground = isDisabled
     ? theme.disabled
     : variant === 'primary'
       ? theme.primary
       : variant === 'danger'
         ? theme.error
-        : 'transparent';
-  const borderColor = variant === 'secondary' ? theme.border : backgroundColor;
+        : theme.backgroundElement;
+  const pressedBackground = isDisabled
+    ? theme.disabled
+    : variant === 'primary'
+      ? theme.primaryPressed
+      : variant === 'danger'
+        ? theme.error
+        : theme.backgroundSelected;
+  const borderColor = variant === 'secondary' ? theme.border : restBackground;
   const labelColor =
     variant === 'secondary' && !isDisabled
       ? theme.text
@@ -67,8 +74,8 @@ export function PrimaryButton({
       onPress={isDisabled ? undefined : onPress}
       style={({ pressed }) => [
         styles.button,
-        { backgroundColor, borderColor },
-        pressed && !isDisabled && styles.pressed,
+        { backgroundColor: pressed && !isDisabled ? pressedBackground : restBackground, borderColor },
+        pressed && !isDisabled && variant !== 'danger' && styles.pressed,
         style,
       ]}
       {...pressableProps}
@@ -89,14 +96,16 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     borderWidth: 1,
     paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: MinTouchTarget,
   },
   pressed: {
-    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
   label: {
     fontSize: 16,
+    letterSpacing: 0.2,
   },
 });

@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Coffee, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { Field } from './CafesPage';
+import { Badge } from '@/components/Badge';
+import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
 import { DataState } from '@/components/DataState';
+import { Field } from '@/components/Field';
 import { useAuth } from '@/contexts/auth-context';
 import { ApiError } from '@/lib/api';
 import { formatCents } from '@/lib/format';
@@ -14,7 +18,7 @@ export function CafeDetailPage() {
   const { api } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin', 'cafes', id],
     queryFn: () => api.getCafe(id!),
     enabled: !!id,
@@ -24,28 +28,69 @@ export function CafeDetailPage() {
 
   return (
     <div>
-      <Link to="/cafes" className="text-sm text-slate-500 hover:underline">
-        ← Cafes
+      <Link
+        to="/cafes"
+        className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+        Cafes
       </Link>
 
-      <DataState isLoading={isLoading} error={error} isEmpty={false}>
-        {data && (
-          <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <CafeEditForm cafeId={id!} cafe={data.cafe} onSaved={invalidate} />
-            <div className="space-y-6">
-              <PayoutRateForm
-                cafeId={id!}
-                currentCents={data.payoutRateCents}
-                onSaved={invalidate}
-              />
-              <BaristaPinForm cafeId={id!} pinIsSet={data.pinIsSet} />
-            </div>
-            <div className="lg:col-span-2">
-              <DrinksSection cafeId={id!} drinks={data.drinks} onChanged={invalidate} />
-            </div>
-          </div>
+      <div className="mt-3">
+        <DataState isLoading={isLoading} error={error} isEmpty={false} onRetry={() => void refetch()}>
+          {data && (
+            <>
+              <CafeHero cafe={data.cafe} />
+
+              <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <CafeEditForm cafeId={id!} cafe={data.cafe} onSaved={invalidate} />
+                <div className="space-y-6">
+                  <PayoutRateForm
+                    cafeId={id!}
+                    currentCents={data.payoutRateCents}
+                    onSaved={invalidate}
+                  />
+                  <BaristaPinForm cafeId={id!} pinIsSet={data.pinIsSet} />
+                </div>
+                <div className="lg:col-span-2">
+                  <DrinksSection cafeId={id!} drinks={data.drinks} onChanged={invalidate} />
+                </div>
+              </div>
+            </>
+          )}
+        </DataState>
+      </div>
+    </div>
+  );
+}
+
+function CafeHero({
+  cafe,
+}: {
+  cafe: { name: string; neighborhood: string; address: string; featured: boolean; photos: string[] };
+}) {
+  const coverPhoto = cafe.photos[0] ?? null;
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-card">
+      <div className="flex h-40 items-center justify-center bg-slate-100">
+        {coverPhoto ? (
+          <img src={coverPhoto} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <Coffee className="h-8 w-8 text-slate-300" aria-hidden />
         )}
-      </DataState>
+      </div>
+      <div className="flex flex-wrap items-start justify-between gap-2 p-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold text-slate-900">{cafe.name}</h1>
+            {cafe.featured ? <Badge tone="info">Featured</Badge> : null}
+          </div>
+          <p className="mt-0.5 text-sm text-slate-500">
+            {cafe.neighborhood} · {cafe.address}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -81,41 +126,41 @@ function CafeEditForm({
   });
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        setError(null);
-        mutation.mutate();
-      }}
-      className="space-y-3 rounded-lg border border-slate-200 bg-white p-4"
-    >
-      <h3 className="text-sm font-semibold text-slate-900">Cafe details</h3>
-      <Field label="Name" value={name} onChange={setName} required />
-      <Field label="Perk line" value={perkLine} onChange={setPerkLine} />
-      <Field label="Neighborhood" value={neighborhood} onChange={setNeighborhood} required />
-      <Field label="Address" value={address} onChange={setAddress} required />
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={featured}
-          onChange={(event) => setFeatured(event.target.checked)}
-        />
-        Featured (curated discovery)
-      </label>
-      {error && (
-        <p className="text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={mutation.isPending}
-        className="rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+    <Card title="Cafe details">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          setError(null);
+          mutation.mutate();
+        }}
+        className="space-y-3"
       >
-        {mutation.isPending ? 'Saving…' : 'Save'}
-      </button>
-      {mutation.isSuccess && <span className="ml-3 text-sm text-emerald-700">Saved.</span>}
-    </form>
+        <Field label="Name" value={name} onChange={setName} required />
+        <Field label="Perk line" value={perkLine} onChange={setPerkLine} />
+        <Field label="Neighborhood" value={neighborhood} onChange={setNeighborhood} required />
+        <Field label="Address" value={address} onChange={setAddress} required />
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={featured}
+            onChange={(event) => setFeatured(event.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+          />
+          Featured (curated discovery)
+        </label>
+        {error && (
+          <p className="text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex items-center gap-3">
+          <Button type="submit" variant="primary" disabled={mutation.isPending}>
+            {mutation.isPending ? 'Saving…' : 'Save'}
+          </Button>
+          {mutation.isSuccess && <span className="text-sm text-emerald-700">Saved.</span>}
+        </div>
+      </form>
+    </Card>
   );
 }
 
@@ -139,50 +184,45 @@ function PayoutRateForm({
   });
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        setError(null);
-        mutation.mutate();
-      }}
-      className="space-y-3 rounded-lg border border-slate-200 bg-white p-4"
-    >
-      <h3 className="text-sm font-semibold text-slate-900">Payout rate</h3>
-      <p className="text-xs text-slate-500">
-        Dollars Social Cup pays this cafe per credit redeemed — unrelated to the fixed $1/credit
-        member price. Snapshotted onto every redemption at the moment it happens; changing it never
-        rewrites past redemptions.
-      </p>
-      {currentCents === null && (
-        <p className="text-xs font-medium text-amber-700">
-          Not set — this cafe cannot accept redemptions yet.
-        </p>
-      )}
-      <Field
-        label="Rate ($ per credit)"
-        value={dollars}
-        onChange={setDollars}
-        required
-        type="number"
-      />
-      {error && (
-        <p className="text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={mutation.isPending}
-        className="rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+    <Card title="Payout rate">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          setError(null);
+          mutation.mutate();
+        }}
+        className="space-y-3"
       >
-        {mutation.isPending ? 'Saving…' : 'Save payout rate'}
-      </button>
-      {mutation.isSuccess && (
-        <span className="ml-3 text-sm text-emerald-700">
-          Saved {formatCents(mutation.data!.payoutRateCents)}.
-        </span>
-      )}
-    </form>
+        <p className="text-xs text-slate-500">
+          Dollars Social Cup pays this cafe per credit redeemed — unrelated to the fixed $1/credit
+          member price. Snapshotted onto every redemption at the moment it happens; changing it never
+          rewrites past redemptions.
+        </p>
+        {currentCents === null && <Badge tone="warning">Not set — cannot accept redemptions yet</Badge>}
+        <Field
+          label="Rate ($ per credit)"
+          value={dollars}
+          onChange={setDollars}
+          required
+          type="number"
+        />
+        {error && (
+          <p className="text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex items-center gap-3">
+          <Button type="submit" variant="primary" disabled={mutation.isPending}>
+            {mutation.isPending ? 'Saving…' : 'Save payout rate'}
+          </Button>
+          {mutation.isSuccess && (
+            <span className="text-sm text-emerald-700">
+              Saved {formatCents(mutation.data!.payoutRateCents)}.
+            </span>
+          )}
+        </div>
+      </form>
+    </Card>
   );
 }
 
@@ -202,46 +242,46 @@ function BaristaPinForm({ cafeId, pinIsSet }: { cafeId: string; pinIsSet: boolea
   });
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        setError(null);
-        setConfirmedVersion(null);
-        mutation.mutate();
-      }}
-      className="space-y-3 rounded-lg border border-slate-200 bg-white p-4"
-    >
-      <h3 className="text-sm font-semibold text-slate-900">Barista PIN</h3>
-      <p className="text-xs text-slate-500">
-        {pinIsSet
-          ? 'Setting a new PIN immediately signs out every trusted device at this cafe.'
-          : 'Not set yet — the scan page cannot authenticate until a PIN is set.'}
-      </p>
-      <Field label="New PIN (4-8 digits)" value={pin} onChange={setPin} required type="password" />
-      {error && (
-        <p className="text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={mutation.isPending}
-        className="rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+    <Card title="Barista PIN" action={pinIsSet ? <Badge tone="success">Set</Badge> : <Badge tone="warning">Not set</Badge>}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          setError(null);
+          setConfirmedVersion(null);
+          mutation.mutate();
+        }}
+        className="space-y-3"
       >
-        {mutation.isPending ? 'Saving…' : pinIsSet ? 'Reset PIN' : 'Set PIN'}
-      </button>
-      {confirmedVersion !== null && (
-        <span className="ml-3 text-sm text-emerald-700">
-          PIN updated (version {confirmedVersion}). Trusted devices signed out.
-        </span>
-      )}
-    </form>
+        <p className="text-xs text-slate-500">
+          {pinIsSet
+            ? 'Setting a new PIN immediately signs out every trusted device at this cafe.'
+            : 'Not set yet — the scan page cannot authenticate until a PIN is set.'}
+        </p>
+        <Field label="New PIN (4-8 digits)" value={pin} onChange={setPin} required type="password" />
+        {error && (
+          <p className="text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex items-center gap-3">
+          <Button type="submit" variant="primary" disabled={mutation.isPending}>
+            {mutation.isPending ? 'Saving…' : pinIsSet ? 'Reset PIN' : 'Set PIN'}
+          </Button>
+          {confirmedVersion !== null && (
+            <span className="text-sm text-emerald-700">
+              PIN updated (version {confirmedVersion}). Trusted devices signed out.
+            </span>
+          )}
+        </div>
+      </form>
+    </Card>
   );
 }
 
 interface DrinkRow {
   id: string;
   name: string;
+  photoUrl?: string | null;
   creditPrice: number;
   retailPriceCents: number;
   isActive: boolean;
@@ -270,74 +310,94 @@ function DrinksSection({
   });
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-900">Drinks</h3>
-        <button
-          type="button"
+    <Card
+      title="Drinks"
+      action={
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<Plus className="h-3.5 w-3.5" />}
           onClick={() => setShowCreate((v) => !v)}
-          className="rounded border border-slate-300 px-3 py-1 text-sm"
         >
           {showCreate ? 'Cancel' : 'Add drink'}
-        </button>
-      </div>
-
+        </Button>
+      }
+    >
       {showCreate && (
-        <CreateDrinkForm
-          cafeId={cafeId}
-          onCreated={() => {
-            setShowCreate(false);
-            onChanged();
-          }}
-        />
+        <div className="mb-4">
+          <CreateDrinkForm
+            cafeId={cafeId}
+            onCreated={() => {
+              setShowCreate(false);
+              onChanged();
+            }}
+          />
+        </div>
       )}
 
-      <table className="mt-4 w-full text-sm">
-        <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-          <tr>
-            <th className="py-2">Name</th>
-            <th className="py-2">Retail</th>
-            <th className="py-2">Credits</th>
-            <th className="py-2">Signature</th>
-            <th className="py-2">Active</th>
-          </tr>
-        </thead>
-        <tbody>
-          {drinks.length === 0 && (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <td colSpan={5} className="py-4 text-slate-500">
-                No drinks yet.
-              </td>
+              <th className="py-2">Drink</th>
+              <th className="py-2">Retail</th>
+              <th className="py-2">Credits</th>
+              <th className="py-2">Signature</th>
+              <th className="py-2">Status</th>
             </tr>
-          )}
-          {drinks.map((drink) => (
-            <tr key={drink.id} className="border-b border-slate-100 last:border-0">
-              <td className="py-2">{drink.name}</td>
-              <td className="py-2">{formatCents(drink.retailPriceCents)}</td>
-              <td className="py-2">{drink.creditPrice}</td>
-              <td className="py-2">
-                <button
-                  type="button"
-                  onClick={() => toggleSignature.mutate(drink)}
-                  className="text-xs underline"
-                >
-                  {drink.signature ? 'Yes' : 'No'}
-                </button>
-              </td>
-              <td className="py-2">
-                <button
-                  type="button"
-                  onClick={() => toggleActive.mutate(drink)}
-                  className="text-xs underline"
-                >
-                  {drink.isActive ? 'Active' : 'Inactive'}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {drinks.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-slate-500">
+                  No drinks yet.
+                </td>
+              </tr>
+            )}
+            {drinks.map((drink) => (
+              <tr key={drink.id} className="border-b border-slate-100 last:border-0">
+                <td className="py-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-md bg-slate-100">
+                      {drink.photoUrl ? (
+                        <img src={drink.photoUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Coffee className="h-4 w-4 text-slate-300" aria-hidden />
+                      )}
+                    </div>
+                    <span className="font-medium text-slate-900">{drink.name}</span>
+                  </div>
+                </td>
+                <td className="py-2 text-slate-600">{formatCents(drink.retailPriceCents)}</td>
+                <td className="py-2 text-slate-600">{drink.creditPrice}</td>
+                <td className="py-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleSignature.mutate(drink)}
+                    aria-pressed={drink.signature}
+                  >
+                    <Badge tone={drink.signature ? 'info' : 'neutral'}>
+                      {drink.signature ? 'Signature' : 'Standard'}
+                    </Badge>
+                  </button>
+                </td>
+                <td className="py-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleActive.mutate(drink)}
+                    aria-pressed={drink.isActive}
+                  >
+                    <Badge tone={drink.isActive ? 'success' : 'neutral'}>
+                      {drink.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 }
 
@@ -366,7 +426,7 @@ function CreateDrinkForm({ cafeId, onCreated }: { cafeId: string; onCreated: () 
         setError(null);
         mutation.mutate();
       }}
-      className="mt-3 grid grid-cols-1 gap-3 rounded border border-slate-200 p-3 sm:grid-cols-3"
+      className="grid grid-cols-1 gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3"
     >
       <Field label="Name" value={name} onChange={setName} required />
       <Field
@@ -389,13 +449,9 @@ function CreateDrinkForm({ cafeId, onCreated }: { cafeId: string; onCreated: () 
         </p>
       )}
       <div className="sm:col-span-3">
-        <button
-          type="submit"
-          disabled={mutation.isPending}
-          className="rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-        >
+        <Button type="submit" variant="primary" disabled={mutation.isPending}>
           {mutation.isPending ? 'Adding…' : 'Add drink'}
-        </button>
+        </Button>
       </div>
     </form>
   );

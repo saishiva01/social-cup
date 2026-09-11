@@ -1,4 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, View } from 'react-native';
+
 import { ThemedText } from '@/components/themed-text';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 interface StatusMessageProps {
@@ -23,15 +27,37 @@ export function StatusMessage({ variant, children, testID }: StatusMessageProps)
   const color = variant === 'error' ? theme.error : theme.success;
 
   return (
-    <ThemedText
-      type="small"
-      style={{ color }}
-      accessibilityLiveRegion="polite"
-      accessibilityRole={variant === 'error' ? 'alert' : 'text'}
-      accessibilityLabel={`${variant === 'error' ? 'Error' : 'Success'}: ${children}`}
-      testID={testID}
-    >
-      {children}
-    </ThemedText>
+    <View style={styles.row}>
+      <Ionicons
+        name={variant === 'error' ? 'alert-circle' : 'checkmark-circle'}
+        size={16}
+        color={color}
+        style={styles.icon}
+      />
+      <ThemedText
+        type="small"
+        style={[styles.text, { color }]}
+        accessibilityLiveRegion="polite"
+        accessibilityRole={variant === 'error' ? 'alert' : 'text'}
+        accessibilityLabel={`${variant === 'error' ? 'Error' : 'Success'}: ${children}`}
+        testID={testID}
+      >
+        {children}
+      </ThemedText>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.one,
+  },
+  icon: {
+    marginTop: 2,
+  },
+  text: {
+    flex: 1,
+  },
+});

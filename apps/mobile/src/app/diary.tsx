@@ -1,14 +1,18 @@
 import type { DiaryEntry } from '@social-cup/types';
+import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Redirect, useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
+import { CafeImage } from '@/components/cafe-image';
 import { EmptyState } from '@/components/empty-state';
 import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+
+const THUMBNAIL_SIZE = 56;
 
 const PAGE_SIZE = 20;
 
@@ -47,7 +51,7 @@ export default function DiaryScreen() {
   }
 
   return (
-    <ScreenContainer center={false} header>
+    <ScreenContainer center={false} header title="Your drink diary">
       <FlatList
         data={entries}
         keyExtractor={(item) => item.ratingId}
@@ -55,11 +59,6 @@ export default function DiaryScreen() {
         ItemSeparatorComponent={() => (
           <View style={[styles.separator, { borderColor: theme.border }]} />
         )}
-        ListHeaderComponent={
-          <ThemedText type="subtitle" style={styles.header}>
-            Your drink diary
-          </ThemedText>
-        }
         onEndReachedThreshold={0.5}
         onEndReached={() => {
           if (diaryQuery.hasNextPage && !diaryQuery.isFetchingNextPage) {
@@ -71,6 +70,7 @@ export default function DiaryScreen() {
             <ActivityIndicator size="large" color={theme.primary} testID="diary-loading" />
           ) : diaryQuery.isError ? (
             <EmptyState
+              icon="cloud-offline-outline"
               title="Couldn't load your diary"
               subtitle="Check your connection and try again."
               actionLabel="Retry"
@@ -79,6 +79,7 @@ export default function DiaryScreen() {
             />
           ) : (
             <EmptyState
+              icon="book-outline"
               title="No rated drinks yet"
               subtitle="Rate a drink from any café page to start your diary."
               testID="diary-empty"
@@ -97,36 +98,52 @@ export default function DiaryScreen() {
 }
 
 function DiaryRow({ entry, onPress }: { entry: DiaryEntry; onPress: () => void }) {
+  const theme = useTheme();
+
   return (
     <View style={styles.row} testID="diary-row">
-      <View style={styles.rowHeader}>
-        <ThemedText type="smallBold" style={styles.drinkName} numberOfLines={1}>
-          {entry.drink.name}
-        </ThemedText>
-        <ThemedText type="small" themeColor="primary">
-          {'★'.repeat(entry.stars)}
-        </ThemedText>
+      <View style={styles.thumbnail}>
+        <CafeImage uri={entry.drink.photoUrl} fallbackLabel={entry.drink.name} />
       </View>
-      <ThemedText type="small" themeColor="textSecondary">
-        {entry.cafe.name} · {entry.cafe.neighborhood}
-      </ThemedText>
-      {entry.note ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          &ldquo;{entry.note}&rdquo;
+      <View style={styles.rowBody}>
+        <View style={styles.rowHeader}>
+          <ThemedText type="smallBold" style={styles.drinkName} numberOfLines={1}>
+            {entry.drink.name}
+          </ThemedText>
+          <View style={styles.stars} accessibilityLabel={`${entry.stars} stars`} testID="diary-stars">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Ionicons
+                key={star}
+                name={star <= entry.stars ? 'star' : 'star-outline'}
+                size={12}
+                color={star <= entry.stars ? theme.primary : theme.border}
+              />
+            ))}
+          </View>
+        </View>
+        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+          {entry.cafe.name} · {entry.cafe.neighborhood}
         </ThemedText>
-      ) : null}
-      <ThemedText type="small" themeColor="textMuted">
-        {formatDate(entry.createdAt)}
-      </ThemedText>
-      <ThemedText
-        type="small"
-        themeColor="primary"
-        accessibilityRole="button"
-        onPress={onPress}
-        testID="diary-edit"
-      >
-        Edit rating
-      </ThemedText>
+        {entry.note ? (
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+            &ldquo;{entry.note}&rdquo;
+          </ThemedText>
+        ) : null}
+        <View style={styles.rowFooter}>
+          <ThemedText type="small" themeColor="textMuted">
+            {formatDate(entry.createdAt)}
+          </ThemedText>
+          <ThemedText
+            type="small"
+            themeColor="primary"
+            accessibilityRole="button"
+            onPress={onPress}
+            testID="diary-edit"
+          >
+            Edit rating
+          </ThemedText>
+        </View>
+      </View>
     </View>
   );
 }
@@ -142,14 +159,23 @@ function formatDate(iso: string): string {
 const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.one,
     paddingBottom: Spacing.five,
   },
-  header: {
-    marginBottom: Spacing.two,
-  },
   row: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  thumbnail: {
+    width: THUMBNAIL_SIZE,
+    height: THUMBNAIL_SIZE,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+  },
+  rowBody: {
+    flex: 1,
     gap: 2,
-    paddingVertical: Spacing.two,
   },
   rowHeader: {
     flexDirection: 'row',
@@ -159,6 +185,16 @@ const styles = StyleSheet.create({
   },
   drinkName: {
     flexShrink: 1,
+  },
+  stars: {
+    flexDirection: 'row',
+    gap: 1,
+  },
+  rowFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginTop: 2,
   },
   separator: {
     borderBottomWidth: 1,

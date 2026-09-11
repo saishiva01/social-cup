@@ -1,4 +1,5 @@
 import type { BaristaRedeemResult } from '@social-cup/types';
+import { Check, X } from 'lucide-react';
 
 interface ResultBannerProps {
   outcome: { kind: 'success'; data: BaristaRedeemResult } | { kind: 'failure'; message: string };
@@ -17,9 +18,9 @@ export function ResultBanner({ outcome }: ResultBannerProps) {
     const { data } = outcome;
     return (
       <div className="result result-success" role="status" data-testid="result-success">
-        <p className="result-icon" aria-hidden="true">
-          ✓
-        </p>
+        <span className="result-icon-ring" aria-hidden="true">
+          <Check size={44} strokeWidth={3} />
+        </span>
         {data.memberPhotoUrl ? (
           <img className="member-photo" src={data.memberPhotoUrl} alt="" />
         ) : null}
@@ -34,9 +35,9 @@ export function ResultBanner({ outcome }: ResultBannerProps) {
 
   return (
     <div className="result result-failure" role="alert" data-testid="result-failure">
-      <p className="result-icon" aria-hidden="true">
-        ✕
-      </p>
+      <span className="result-icon-ring" aria-hidden="true">
+        <X size={44} strokeWidth={3} />
+      </span>
       <p className="result-headline">{outcome.message}</p>
     </div>
   );

@@ -1,4 +1,5 @@
 import type { BaristaRedeemResult, BaristaTodayItem } from '@social-cup/types';
+import { AlertCircle, Clock, Loader2, QrCode } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
 import { ApiError, redeem, today } from '@/lib/api';
@@ -75,10 +76,11 @@ export function ScanScreen({ cafeName, onSessionExpired }: ScanScreenProps) {
         <h1>{cafeName}</h1>
         <button
           type="button"
-          className="link-button"
+          className="secondary-button"
           onClick={handleToggleToday}
           data-testid="today-toggle"
         >
+          <Clock size={16} aria-hidden />
           {showToday ? 'Back to scanning' : "Today's redemptions"}
         </button>
       </header>
@@ -88,10 +90,15 @@ export function ScanScreen({ cafeName, onSessionExpired }: ScanScreenProps) {
       ) : (
         <>
           {outcome ? (
-            <div onClick={() => setOutcome(null)} role="presentation">
+            <button
+              type="button"
+              className="result-wrapper"
+              onClick={() => setOutcome(null)}
+              aria-label="Dismiss and scan the next code"
+            >
               <ResultBanner outcome={outcome} />
-              <p className="tap-hint">Tap anywhere to scan the next code</p>
-            </div>
+              <span className="tap-hint">Tap anywhere to scan the next code</span>
+            </button>
           ) : (
             <form onSubmit={handleSubmit} className="code-form">
               <input
@@ -105,7 +112,15 @@ export function ScanScreen({ cafeName, onSessionExpired }: ScanScreenProps) {
                 data-testid="code-input"
               />
               <button type="submit" disabled={busy || code.trim() === ''} data-testid="code-submit">
-                {busy ? 'Checking…' : 'Redeem'}
+                {busy ? (
+                  <>
+                    <Loader2 size={18} className="spin" aria-hidden /> Checking…
+                  </>
+                ) : (
+                  <>
+                    <QrCode size={18} aria-hidden /> Redeem
+                  </>
+                )}
               </button>
             </form>
           )}
@@ -119,31 +134,47 @@ function TodayList({ items, error }: { items: BaristaTodayItem[] | null; error: 
   if (error) {
     return (
       <p className="status status-error" role="alert">
+        <AlertCircle size={16} aria-hidden />
         {error}
       </p>
     );
   }
   if (!items) {
-    return <p className="status">Loading…</p>;
+    return (
+      <p className="status">
+        <Loader2 size={16} className="spin" aria-hidden /> Loading…
+      </p>
+    );
   }
   if (items.length === 0) {
     return <p className="status">No redemptions yet today.</p>;
   }
   return (
-    <ul className="today-list" data-testid="today-list">
-      {items.map((item) => (
-        <li key={item.id} className="today-row">
-          <span>{item.memberFirstName}</span>
-          <span>{item.drinkName}</span>
-          <span>{item.creditsDeducted} cr</span>
-          <span>
-            {new Date(item.redeemedAt).toLocaleTimeString([], {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <>
+      <p className="today-summary">
+        {items.length} redemption{items.length === 1 ? '' : 's'} today
+      </p>
+      <div className="today-head">
+        <span>Member</span>
+        <span>Drink</span>
+        <span>Credits</span>
+        <span>Time</span>
+      </div>
+      <ul className="today-list" data-testid="today-list">
+        {items.map((item) => (
+          <li key={item.id} className="today-row">
+            <span>{item.memberFirstName}</span>
+            <span>{item.drinkName}</span>
+            <span className="cell-credits">{item.creditsDeducted} cr</span>
+            <span className="cell-time">
+              {new Date(item.redeemedAt).toLocaleTimeString([], {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

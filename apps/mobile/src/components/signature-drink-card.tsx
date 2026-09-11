@@ -3,14 +3,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CafeImage } from '@/components/cafe-image';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { CardImage } from '@/constants/theme';
 
 interface SignatureDrinkCardProps {
   drink: SignatureDrinkListItem;
   onPress: () => void;
 }
 
-const CARD_WIDTH = 150;
+const CARD_WIDTH = CardImage.squareSize;
 
 /** Signature-drink strip card (PRD Module 6) — taps through to that drink's cafe. */
 export function SignatureDrinkCard({ drink, onPress }: SignatureDrinkCardProps) {
@@ -40,7 +40,7 @@ export function SignatureDrinkCard({ drink, onPress }: SignatureDrinkCardProps) 
 const styles = StyleSheet.create({
   container: {
     width: CARD_WIDTH,
-    gap: 4,
+    gap: 3,
   },
   pressed: {
     opacity: 0.9,
@@ -48,8 +48,8 @@ const styles = StyleSheet.create({
   imageWrapper: {
     width: CARD_WIDTH,
     height: CARD_WIDTH,
-    borderRadius: Radius.md,
+    borderRadius: CardImage.radius,
     overflow: 'hidden',
-    marginBottom: Spacing.half,
+    marginBottom: 6,
   },
 });

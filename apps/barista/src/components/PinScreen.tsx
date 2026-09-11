@@ -1,3 +1,4 @@
+import { AlertCircle, Lock } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
 import { authenticate, ApiError } from '@/lib/api';
@@ -37,7 +38,10 @@ export function PinScreen({ cafeId, onAuthenticated }: PinScreenProps) {
 
   return (
     <main className="screen screen-center">
-      <h1>Social Cup</h1>
+      <span className="brand-mark" aria-hidden="true">
+        SC
+      </span>
+      <h1>Barista access</h1>
       <p className="subtitle">Enter this café&apos;s PIN to unlock scanning on this device.</p>
       <form onSubmit={handleSubmit} className="pin-form">
         <input
@@ -51,12 +55,16 @@ export function PinScreen({ cafeId, onAuthenticated }: PinScreenProps) {
           aria-label="Café PIN"
           data-testid="pin-input"
         />
-        {error ? (
-          <p className="status status-error" role="alert" data-testid="pin-error">
-            {error}
-          </p>
-        ) : null}
+        <div className="error-slot">
+          {error ? (
+            <p className="status status-error" role="alert" data-testid="pin-error">
+              <AlertCircle size={16} aria-hidden />
+              {error}
+            </p>
+          ) : null}
+        </div>
         <button type="submit" disabled={busy || pin.trim() === ''} data-testid="pin-submit">
+          <Lock size={17} aria-hidden />
           {busy ? 'Checking…' : 'Unlock'}
         </button>
       </form>

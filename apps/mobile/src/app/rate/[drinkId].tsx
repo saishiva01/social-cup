@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -83,6 +84,9 @@ export default function RateDrinkScreen() {
   if (saved) {
     return (
       <ScreenContainer header center>
+        <View style={[styles.savedIcon, { backgroundColor: theme.success }]}>
+          <Ionicons name="checkmark" size={32} color="#ffffff" />
+        </View>
         <ThemedText type="subtitle" style={styles.centered}>
           Rating saved
         </ThemedText>
@@ -156,5 +160,13 @@ const styles = StyleSheet.create({
   doneActions: {
     gap: Spacing.two,
     alignSelf: 'stretch',
+  },
+  savedIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.one,
   },
 });

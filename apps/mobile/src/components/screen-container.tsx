@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import {
@@ -13,13 +14,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, MinTouchTarget, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 interface ScreenContainerProps {
   children: ReactNode;
   /** Vertically centers content — the right default for short auth forms. Set false for longer, scroll-from-top content like the profile screen. */
   center?: boolean;
-  /** Shows the back-arrow row used at the top of every Phase 1 auth screen. */
+  /** Shows the back row used at the top of every Phase 1 auth screen. */
   header?: boolean;
+  /** Optional title shown next to the back button — the one shared header affordance for every screen that needs a back action. */
+  title?: string;
 }
 
 /**
@@ -30,8 +34,14 @@ interface ScreenContainerProps {
  * (including on a tablet or the web preview, where an edge-to-edge form
  * would otherwise stretch unreadably wide).
  */
-export function ScreenContainer({ children, center = true, header = false }: ScreenContainerProps) {
+export function ScreenContainer({
+  children,
+  center = true,
+  header = false,
+  title,
+}: ScreenContainerProps) {
   const router = useRouter();
+  const theme = useTheme();
 
   return (
     <ThemedView style={styles.flex}>
@@ -45,10 +55,13 @@ export function ScreenContainer({ children, center = true, header = false }: Scr
               onPress={() => router.back()}
               style={styles.headerButton}
             >
-              <ThemedText type="default" style={styles.backArrow}>
-                ←
-              </ThemedText>
+              <Ionicons name="chevron-back" size={24} color={theme.text} />
             </Pressable>
+            {title ? (
+              <ThemedText type="smallBold" numberOfLines={1} style={styles.headerTitle}>
+                {title}
+              </ThemedText>
+            ) : null}
           </View>
         ) : null}
         <KeyboardAvoidingView
@@ -101,8 +114,9 @@ const styles = StyleSheet.create({
     height: MinTouchTarget,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: -Spacing.two,
   },
-  backArrow: {
-    fontSize: 22,
+  headerTitle: {
+    flexShrink: 1,
   },
 });

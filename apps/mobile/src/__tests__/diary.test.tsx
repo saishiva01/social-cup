@@ -106,7 +106,7 @@ describe('DiaryScreen', () => {
 
     await waitFor(() => expect(screen.getByText('Oat Milk Cortado')).toBeTruthy());
     expect(screen.getByText(/Blackwood Roasting Co\./)).toBeTruthy();
-    expect(screen.getByText('★★★★★')).toBeTruthy();
+    expect(screen.getByLabelText('5 stars')).toBeTruthy();
     expect(screen.getByText(/Perfect/)).toBeTruthy();
   });
 

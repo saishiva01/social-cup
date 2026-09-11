@@ -61,11 +61,14 @@ function Chip({
         styles.chip,
         {
           borderColor: selected ? theme.primary : theme.border,
-          backgroundColor: selected ? theme.primary : 'transparent',
+          backgroundColor: selected ? theme.primary : theme.backgroundElement,
         },
       ]}
     >
-      <ThemedText type="small" style={{ color: selected ? '#ffffff' : undefined }}>
+      <ThemedText
+        type="small"
+        style={{ color: selected ? theme.primaryText : theme.text, fontWeight: selected ? '700' : '500' }}
+      >
         {label}
       </ThemedText>
     </Pressable>

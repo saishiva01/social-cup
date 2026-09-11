@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { CafeImage } from '@/components/cafe-image';
 import { StarRatingDisplay } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { CardImage, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 interface CafeCardProps {
@@ -83,8 +83,8 @@ const styles = StyleSheet.create({
   },
   imageWrapper: {
     width: '100%',
-    height: 160,
-    borderRadius: Radius.md,
+    height: CardImage.wideHeight,
+    borderRadius: CardImage.radius,
     overflow: 'hidden',
   },
   badge: {
@@ -92,11 +92,17 @@ const styles = StyleSheet.create({
     top: Spacing.two,
     left: Spacing.two,
     paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: Radius.pill,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
   },
   body: {
-    gap: 2,
+    gap: 3,
+    paddingTop: 2,
   },
   titleRow: {
     flexDirection: 'row',

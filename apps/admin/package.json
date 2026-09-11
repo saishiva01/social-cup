@@ -17,6 +17,7 @@
     "@social-cup/types": "workspace:*",
     "@social-cup/validation": "workspace:*",
     "@tanstack/react-query": "^5.59.15",
+    "lucide-react": "^0.462.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0"

@@ -136,6 +136,7 @@ export default function MembershipScreen() {
     return (
       <ScreenContainer header center>
         <EmptyState
+          icon="cloud-offline-outline"
           title="Couldn't load your membership"
           subtitle="Check your connection and try again."
           actionLabel="Retry"
@@ -192,7 +193,7 @@ function PlanSummary() {
       style={[styles.card, { backgroundColor: theme.surface }]}
       testID="membership-plan-summary"
     >
-      <ThemedText type="smallBold">$24.99/month</ThemedText>
+      <ThemedText type="heading">$24.99/month</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         30 drink credits every month, no rollover — 1 credit is always worth $1 at any partner café.
       </ThemedText>

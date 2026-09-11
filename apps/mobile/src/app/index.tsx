@@ -1,4 +1,5 @@
 import type { CafeListItem } from '@social-cup/types';
+import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
@@ -57,6 +58,7 @@ export default function HomeScreen() {
 
 function WelcomeScreen() {
   const router = useRouter();
+  const theme = useTheme();
 
   return (
     <ThemedView style={styles.container}>
@@ -81,25 +83,33 @@ function WelcomeScreen() {
         </View>
       </View>
 
-      <SafeAreaView style={styles.bottomSafeArea} edges={['bottom']}>
-        <View style={styles.content}>
-          <ThemedText type="title" style={styles.title}>
-            Welcome to Social Cup
-          </ThemedText>
+      <SafeAreaView
+        style={[styles.bottomSafeArea, { backgroundColor: theme.background }]}
+        edges={['bottom']}
+      >
+        <View style={[styles.panel, { backgroundColor: theme.background }]}>
+          <View style={styles.content}>
+            <ThemedText type="title" style={styles.title}>
+              Welcome to Social Cup
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.title}>
+              A Dallas coffee membership — one card, every partner café.
+            </ThemedText>
 
-          <View style={styles.spacer} />
+            <View style={styles.spacer} />
 
-          <PrimaryButton
-            label="Get started"
-            onPress={() => router.push('/register')}
-            testID="welcome-get-started"
-          />
-          <PrimaryButton
-            label="I already have an account"
-            variant="secondary"
-            onPress={() => router.push('/login')}
-            testID="welcome-login"
-          />
+              <PrimaryButton
+              label="Get started"
+              onPress={() => router.push('/register')}
+              testID="welcome-get-started"
+            />
+            <PrimaryButton
+              label="I already have an account"
+              variant="secondary"
+              onPress={() => router.push('/login')}
+              testID="welcome-login"
+            />
+          </View>
         </View>
       </SafeAreaView>
     </ThemedView>
@@ -203,6 +213,7 @@ function DiscoverScreen({ displayName }: { displayName: string }) {
                     style={styles.profileLink}
                     testID="discover-profile-link"
                   >
+                    <Ionicons name="person-circle-outline" size={18} color={theme.primary} />
                     <ThemedText type="smallBold" themeColor="primary">
                       Profile
                     </ThemedText>
@@ -247,7 +258,11 @@ function DiscoverScreen({ displayName }: { displayName: string }) {
                 </HorizontalStrip>
               ) : null}
 
-              <ThemedText type="smallBold" themeColor="textMuted" style={styles.sectionHeader}>
+              <ThemedText
+                type="smallBold"
+                themeColor="textMuted"
+                style={[styles.sectionHeader, { borderTopColor: theme.border }]}
+              >
                 ALL CAFÉS
               </ThemedText>
             </View>
@@ -257,6 +272,7 @@ function DiscoverScreen({ displayName }: { displayName: string }) {
               <CafeListSkeleton />
             ) : cafesQuery.isError ? (
               <EmptyState
+                icon="cloud-offline-outline"
                 title="Couldn't load cafés"
                 subtitle="Check your connection and try again."
                 actionLabel="Retry"
@@ -265,6 +281,7 @@ function DiscoverScreen({ displayName }: { displayName: string }) {
               />
             ) : hasActiveFilters ? (
               <EmptyState
+                icon="search-outline"
                 title="No cafés match your search"
                 subtitle="Try a different name or neighbourhood."
                 actionLabel="Clear filters"
@@ -273,6 +290,7 @@ function DiscoverScreen({ displayName }: { displayName: string }) {
               />
             ) : (
               <EmptyState
+                icon="cafe-outline"
                 title="No cafés yet"
                 subtitle="New partner cafés are added regularly — check back soon."
                 testID="discover-empty"
@@ -375,13 +393,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   profileLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     minHeight: MinTouchTarget,
     justifyContent: 'center',
     paddingHorizontal: Spacing.one,
   },
   sectionHeader: {
     letterSpacing: 0.5,
-    marginTop: Spacing.one,
+    marginTop: Spacing.two,
+    paddingTop: Spacing.three,
+    borderTopWidth: 1,
   },
   listContent: {
     paddingHorizontal: Spacing.four,
@@ -437,8 +460,14 @@ const styles = StyleSheet.create({
   bottomSafeArea: {
     flex: 1,
   },
+  panel: {
+    flex: 1,
+    marginTop: -28,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+  },
   spacer: {
     flex: 1,
-    minHeight: Spacing.four,
+    minHeight: Spacing.three,
   },
 });

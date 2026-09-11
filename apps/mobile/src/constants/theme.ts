@@ -106,3 +106,16 @@ export const Radius = {
 
 /** Minimum comfortable touch target (Apple HIG / Material both recommend ~44-48pt). */
 export const MinTouchTarget = 44;
+
+/**
+ * The full photo-card family (cafe list, featured strip, signature-drink
+ * strip) shares one radius and one of two deliberate aspect ratios so a
+ * screen with several card types side by side still reads as one system.
+ */
+export const CardImage = {
+  radius: Radius.lg,
+  wideHeight: 168,
+  featuredWidth: 208,
+  featuredHeight: 150,
+  squareSize: 152,
+} as const;

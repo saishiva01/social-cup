@@ -1,14 +1,15 @@
 import type { CreateRedemptionResult } from '@social-cup/types';
+import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/primary-button';
 import { ScreenContainer } from '@/components/screen-container';
 import { StatusMessage } from '@/components/status-message';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -74,12 +75,20 @@ export default function RedeemScreen() {
   if (status === 'redeemed') {
     return (
       <ScreenContainer header center>
+        <View style={[styles.resultIcon, { backgroundColor: theme.success }]}>
+          <Ionicons name="checkmark" size={40} color="#ffffff" />
+        </View>
         <ThemedText type="subtitle" style={styles.centered}>
-          Redeemed!
+          Redeemed successfully
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
           Enjoy your {drinkName ?? 'drink'}.
         </ThemedText>
+        {membershipQuery.data ? (
+          <ThemedText type="smallBold" themeColor="primary" style={styles.centered}>
+            {membershipQuery.data.credits} credits remaining
+          </ThemedText>
+        ) : null}
         <View style={styles.doneActions}>
           <PrimaryButton
             label="Rate this drink"
@@ -105,6 +114,13 @@ export default function RedeemScreen() {
   if (status === 'expired' || status === 'canceled') {
     return (
       <ScreenContainer header center>
+        <View style={[styles.resultIcon, { backgroundColor: theme.surface }]}>
+          <Ionicons
+            name={status === 'expired' ? 'time-outline' : 'close-circle-outline'}
+            size={36}
+            color={theme.textMuted}
+          />
+        </View>
         <ThemedText type="subtitle" style={styles.centered}>
           {status === 'expired' ? 'Code expired' : 'Code no longer valid'}
         </ThemedText>
@@ -134,26 +150,34 @@ export default function RedeemScreen() {
           {redemption.drinkName} at {redemption.cafeName}
         </ThemedText>
 
-        <View style={[styles.codeBox, { borderColor: theme.border }]}>
+        <View
+          style={[
+            styles.codeBox,
+            { borderColor: theme.border, backgroundColor: theme.backgroundElement },
+          ]}
+        >
           <ThemedText type="code" style={styles.codeText} testID="redeem-code">
             {redemption.code}
           </ThemedText>
+          <View style={[styles.codeDivider, { borderColor: theme.border }]} />
+          <View style={styles.backupRow}>
+            <ThemedText type="small" themeColor="textMuted">
+              Camera not working? Backup code:
+            </ThemedText>
+            <ThemedText type="smallBold" testID="redeem-backup-code">
+              {redemption.backupCode}
+            </ThemedText>
+          </View>
         </View>
 
         <CountdownLabel expiresAt={redemption.expiresAt} />
 
-        <View style={styles.backupRow}>
-          <ThemedText type="small" themeColor="textMuted">
-            Camera not working? Backup code:
-          </ThemedText>
-          <ThemedText type="smallBold" testID="redeem-backup-code">
-            {redemption.backupCode}
+        <View style={styles.waitingRow}>
+          <ActivityIndicator size="small" color={theme.textMuted} />
+          <ThemedText type="small" themeColor="textSecondary">
+            Waiting for the barista to scan your code…
           </ThemedText>
         </View>
-
-        <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-          Waiting for the barista to scan your code…
-        </ThemedText>
       </ScreenContainer>
     );
   }
@@ -242,21 +266,41 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     alignSelf: 'stretch',
   },
+  resultIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.one,
+  },
   codeBox: {
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     paddingVertical: Spacing.four,
     paddingHorizontal: Spacing.three,
     alignItems: 'center',
     alignSelf: 'stretch',
+    gap: Spacing.three,
   },
   codeText: {
-    fontSize: 26,
-    letterSpacing: 2,
+    fontSize: 34,
+    letterSpacing: 3,
     textAlign: 'center',
+  },
+  codeDivider: {
+    alignSelf: 'stretch',
+    borderTopWidth: 1,
+    borderStyle: 'dashed',
   },
   backupRow: {
     alignItems: 'center',
     gap: 2,
+  },
+  waitingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
   },
 });

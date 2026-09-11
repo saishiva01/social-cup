@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -12,18 +13,23 @@ interface StarRatingDisplayProps {
 
 /** Read-only average + count, or a "New" badge when nothing's been rated yet (PRD Module 3/4/5). */
 export function StarRatingDisplay({ averageRating, ratingCount, testID }: StarRatingDisplayProps) {
+  const theme = useTheme();
+
   if (averageRating === null) {
     return (
-      <ThemedText type="small" themeColor="textSecondary" testID={testID}>
+      <ThemedText type="smallBold" themeColor="primary" testID={testID}>
         New
       </ThemedText>
     );
   }
 
   return (
-    <ThemedText type="small" themeColor="textSecondary" testID={testID}>
-      {'★'} {averageRating.toFixed(1)} ({ratingCount})
-    </ThemedText>
+    <View style={styles.displayRow} testID={testID}>
+      <Ionicons name="star" size={13} color={theme.primary} />
+      <ThemedText type="smallBold" themeColor="text">
+        {averageRating.toFixed(1)} ({ratingCount})
+      </ThemedText>
+    </View>
   );
 }
 
@@ -49,11 +55,11 @@ export function StarRatingInput({ value, onChange, testID }: StarRatingInputProp
           onPress={() => onChange(star)}
           testID={`star-${star}`}
         >
-          <ThemedText
-            style={[styles.star, { color: star <= value ? theme.primary : theme.border }]}
-          >
-            {'★'}
-          </ThemedText>
+          <Ionicons
+            name={star <= value ? 'star' : 'star-outline'}
+            size={34}
+            color={star <= value ? theme.primary : theme.border}
+          />
         </Pressable>
       ))}
     </View>
@@ -61,11 +67,13 @@ export function StarRatingInput({ value, onChange, testID }: StarRatingInputProp
 }
 
 const styles = StyleSheet.create({
+  displayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   row: {
     flexDirection: 'row',
     gap: Spacing.two,
-  },
-  star: {
-    fontSize: 32,
   },
 });

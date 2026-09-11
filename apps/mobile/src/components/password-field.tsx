@@ -14,7 +14,7 @@ type PasswordFieldProps = Omit<FormFieldProps, 'secureTextEntry' | 'accessoryRig
  * user to type blind or leave it permanently visible.
  */
 export const PasswordField = forwardRef<TextInput, PasswordFieldProps>(function PasswordField(
-  { textContentType = 'password', ...props },
+  { textContentType = 'password', autoCapitalize = 'none', autoCorrect = false, ...props },
   ref,
 ) {
   const [visible, setVisible] = useState(false);
@@ -23,6 +23,8 @@ export const PasswordField = forwardRef<TextInput, PasswordFieldProps>(function 
     <FormField
       ref={ref}
       textContentType={textContentType}
+      autoCapitalize={autoCapitalize}
+      autoCorrect={autoCorrect}
       secureTextEntry={!visible}
       accessoryRight={
         <Pressable
